@@ -29,9 +29,19 @@ const char* NODE_ID = "aiota-living";
 // AIOTA Backend API & MQTT Configuration
 // Set to this laptop's Wi-Fi IP address on port 8000
 const char* API_BASE = "http://192.168.1.10:8000";
-const char* MQTT_HOST = "192.168.1.10";
+
+// AIOTA MQTT Cloud Broker Configuration
+const bool MQTT_ENABLED = true;
+const char* MQTT_HOST = "mqtt.aiota.tech";
 const uint16_t MQTT_PORT = 1883;
-const bool MQTT_ENABLED = false;
+const char* MQTT_CLIENT_ID = "dev_a0a94ebae634";
+const char* MQTT_USERNAME = "dev_a0a94ebae634";
+const char* MQTT_PASSWORD = "UsJpRoSIrMPbHPguEH2V8kPpdK8yxGYA";
+
+// MQTT Topics
+const char* MQTT_TOPIC_TELEMETRY = "devices/dev_a0a94ebae634/telemetry";
+const char* MQTT_TOPIC_STATUS = "devices/dev_a0a94ebae634/status";
+const char* MQTT_TOPIC_COMMAND = "devices/dev_a0a94ebae634/cmd";
 
 // Hardware Pin Configuration
 const uint8_t RELAY_PINS[6] = {1, 2, 41, 42, 45, 46};
@@ -147,30 +157,54 @@ bool readAM2315C(float &temp, float &hum) {
 void publishState() {
   if (!MQTT_ENABLED || !mqtt.connected()) return;
   StaticJsonDocument<256> doc;
+  doc["device_id"] = MQTT_CLIENT_ID;
   doc["node_id"] = NODE_ID;
+  doc["ip_address"] = WiFi.localIP().toString();
+  doc["rssi"] = WiFi.RSSI();
   JsonArray states = doc.createNestedArray("relays");
   for (int i = 0; i < 6; i++) states.add(relayState[i]);
   char payload[256];
   serializeJson(doc, payload);
-  mqtt.publish((String("aiota/") + NODE_ID + "/status").c_str(), payload, true);
+  mqtt.publish(MQTT_TOPIC_STATUS, payload, true);
+  Serial.printf("[MQTT] Status published to %s: %s\n", MQTT_TOPIC_STATUS, payload);
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
-  StaticJsonDocument<128> doc;
-  if (deserializeJson(doc, payload, length)) return;
+  StaticJsonDocument<256> doc;
+  DeserializationError err = deserializeJson(doc, payload, length);
+  if (err) {
+    Serial.printf("[MQTT] JSON parse error: %s\n", err.c_str());
+    return;
+  }
+  
   int channel = doc["channel"] | 0;
-  const char* state = doc["state"] | "OFF";
-  setRelay(channel, String(state).equalsIgnoreCase("ON"));
-  publishState();
+  bool isOn = false;
+  if (doc.containsKey("is_on")) {
+    isOn = doc["is_on"].as<bool>();
+  } else if (doc.containsKey("state")) {
+    const char* st = doc["state"];
+    isOn = (String(st).equalsIgnoreCase("ON") || String(st) == "1" || String(st).equalsIgnoreCase("true"));
+  } else if (doc.containsKey("value")) {
+    isOn = doc["value"].as<int>() > 0;
+  }
+
+  if (channel >= 1 && channel <= 6) {
+    setRelay(channel, isOn);
+    publishState();
+    Serial.printf("[MQTT] Relays updated via MQTT: CH%d -> %s\n", channel, isOn ? "ON" : "OFF");
+  }
 }
 
 void connectMqtt() {
   if (!MQTT_ENABLED || mqtt.connected() || WiFi.status() != WL_CONNECTED) return;
-  String clientId = String("aiota-") + NODE_ID;
-  if (mqtt.connect(clientId.c_str())) {
-    String commandTopic = String("aiota/") + NODE_ID + "/relay/set";
-    mqtt.subscribe(commandTopic.c_str());
+  Serial.printf("[MQTT] Connecting to %s as %s...\n", MQTT_HOST, MQTT_CLIENT_ID);
+  if (mqtt.connect(MQTT_CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD)) {
+    Serial.println("[MQTT] Connected to AIOTA MQTT Broker!");
+    mqtt.subscribe(MQTT_TOPIC_COMMAND);
+    Serial.printf("[MQTT] Subscribed to command topic: %s\n", MQTT_TOPIC_COMMAND);
     publishState();
+  } else {
+    Serial.printf("[MQTT] Connection failed, rc=%d. Will retry.\n", mqtt.state());
   }
 }
 
@@ -203,6 +237,14 @@ void sendHeartbeat() {
   int code = http.POST(body);
   Serial.printf("[TELEMETRY] Sent to %s: HTTP status %d\n", API_BASE, code);
   http.end();
+
+  // Also publish telemetry directly to AIOTA MQTT Broker
+  if (MQTT_ENABLED && mqtt.connected()) {
+    char telePayload[256];
+    serializeJson(doc, telePayload);
+    mqtt.publish(MQTT_TOPIC_TELEMETRY, telePayload);
+    Serial.printf("[MQTT] Telemetry published to %s: %s\n", MQTT_TOPIC_TELEMETRY, telePayload);
+  }
 }
 
 void handleHttpRelay() {
