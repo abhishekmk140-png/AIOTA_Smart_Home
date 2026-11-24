@@ -34,14 +34,14 @@ const char* API_BASE = "http://192.168.1.10:8000";
 const bool MQTT_ENABLED = true;
 const char* MQTT_HOST = "mqtt.aiota.tech";
 const uint16_t MQTT_PORT = 1883;
-const char* MQTT_CLIENT_ID = "dev_f1babe801e17";
-const char* MQTT_USERNAME = "dev_f1babe801e17";
-const char* MQTT_PASSWORD = "gP09kk71DNBBfDofiOP7LJly9ZTHRN6N";
+const char* MQTT_CLIENT_ID = "dev_baa26b76b453";
+const char* MQTT_USERNAME = "dev_baa26b76b453";
+const char* MQTT_PASSWORD = "GMfOR6mtO_yR3tE57G7kspk0bpyqlAuk";
 
 // MQTT Topics
-const char* MQTT_TOPIC_TELEMETRY = "devices/dev_f1babe801e17/telemetry";
-const char* MQTT_TOPIC_STATUS = "devices/dev_f1babe801e17/status";
-const char* MQTT_TOPIC_COMMAND = "devices/dev_f1babe801e17/cmd";
+const char* MQTT_TOPIC_TELEMETRY = "devices/dev_baa26b76b453/telemetry";
+const char* MQTT_TOPIC_STATUS = "devices/dev_baa26b76b453/status";
+const char* MQTT_TOPIC_COMMAND = "devices/dev_baa26b76b453/cmd";
 
 // Hardware Pin Configuration
 const uint8_t RELAY_PINS[6] = {1, 2, 41, 42, 45, 46};
