@@ -1,9 +1,9 @@
 import json
+import threading
 from ..config import settings
 
-def publish_relay(node_id: str, channel: int, is_on: bool) -> bool:
-    if not settings.mqtt_enabled:
-        return False
+def _do_publish(node_id: str, channel: int, is_on: bool):
+    """Background publisher - sends command to MQTT broker without blocking the local HTTP relay."""
     try:
         import paho.mqtt.publish as publish
         topic = settings.mqtt_command_topic
@@ -26,10 +26,19 @@ def publish_relay(node_id: str, channel: int, is_on: bool) -> bool:
             port=settings.mqtt_port,
             client_id=settings.mqtt_client_id,
             auth=auth,
-            qos=1
+            qos=0  # QoS 0 = Non-blocking fire & forget
         )
-        print(f"[MQTT] Relay command published: CH{channel} -> {'ON' if is_on else 'OFF'} on topic {topic}")
-        return True
+        print(f"[MQTT] Relay command sent: CH{channel} -> {'ON' if is_on else 'OFF'}")
     except Exception as e:
         print(f"[MQTT] Error publishing relay command: {e}")
+
+def publish_relay(node_id: str, channel: int, is_on: bool) -> bool:
+    if not settings.mqtt_enabled:
         return False
+    # Dispatch in daemon thread so the local physical relay and API response are INSTANT (<10ms)
+    threading.Thread(
+        target=_do_publish,
+        args=(node_id, channel, is_on),
+        daemon=True
+    ).start()
+    return True

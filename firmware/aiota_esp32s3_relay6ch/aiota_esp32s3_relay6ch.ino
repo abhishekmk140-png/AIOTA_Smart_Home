@@ -213,6 +213,7 @@ void sendHeartbeat() {
   HTTPClient http;
   http.begin(String(API_BASE) + "/api/telemetry");
   http.addHeader("Content-Type", "application/json");
+  http.setTimeout(1200); // 1.2s timeout so HTTP never freezes relay loop
 
   float temp = 0.0, hum = 0.0;
   bool hasSensor = readAM2315C(temp, hum);
@@ -268,9 +269,9 @@ void handleHttpRelay() {
     return;
   }
   setRelay(channel, isOn);
-  publishState();
+  localServer.send(200, "application/json", "{\"ok\":true}");
   Serial.printf("[HTTP] Relays updated: CH%d set to %s\n", channel, isOn ? "ON" : "OFF");
-  localServer.send(200, "application/json", "{\"ok\":true,\"channel\":channel,\"state\":isOn}");
+  publishState();
 }
 
 void handleHttpStatus() {
@@ -350,8 +351,15 @@ void loop() {
 
   if (WiFi.status() == WL_CONNECTED) {
     if (MQTT_ENABLED) {
-      if (!mqtt.connected()) connectMqtt();
-      mqtt.loop();
+      static unsigned long lastMqttRetry = 0;
+      if (!mqtt.connected()) {
+        if (millis() - lastMqttRetry > 5000) {
+          lastMqttRetry = millis();
+          connectMqtt();
+        }
+      } else {
+        mqtt.loop();
+      }
     }
 
     // Periodic telemetry heartbeat (every 10 seconds)
@@ -361,5 +369,5 @@ void loop() {
       publishState();
     }
   }
-  delay(10);
+  delay(1);
 }

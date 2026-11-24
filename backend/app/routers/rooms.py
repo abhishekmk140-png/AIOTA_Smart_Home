@@ -44,11 +44,14 @@ async def toggle_all_devices(room_id: int, payload: RoomToggleAll, db: AsyncSess
     if not room:
         raise HTTPException(404, "Room not found")
     
+    dispatched_channels = set()
     for device in room.devices:
         device.is_on = payload.is_on
-        publish_relay(device.node_id, device.channel, payload.is_on)
-        if device.ip_address:
-            send_http_relay(device.ip_address, device.channel, payload.is_on)
+        if device.channel not in dispatched_channels:
+            dispatched_channels.add(device.channel)
+            if device.ip_address:
+                send_http_relay(device.ip_address, device.channel, payload.is_on)
+            publish_relay(device.node_id, device.channel, payload.is_on)
         await hub.publish({"type": "relay", "device_id": device.id, "is_on": device.is_on})
 
     state_str = "ON" if payload.is_on else "OFF"

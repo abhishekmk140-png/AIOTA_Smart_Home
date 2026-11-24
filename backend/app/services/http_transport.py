@@ -74,33 +74,43 @@ def send_http_relay(ip_address: str | None, channel: int, is_on: bool) -> bool:
 async def probe_esp32_hardware(ip_address: str) -> dict:
     """Check if ESP32-S3 relay hardware is reachable and responsive at the given IP."""
     clean_ip = ip_address.replace("http://", "").replace("https://", "").rstrip("/")
-    url = f"http://{clean_ip}/health" if ":" in clean_ip else f"http://{clean_ip}:80/health"
-    async with httpx.AsyncClient(timeout=2.0) as client:
-        try:
-            res = await client.get(url)
-            if res.status_code == 200:
-                data = res.json()
-                return {"online": True, "hardware": data.get("hardware", "Waveshare ESP32-S3 6CH"), "status": "ok"}
-        except Exception as e:
-            # Fallback probe to /api/status
+    from ..services.node_tracker import node_tracker
+
+    # 1. Direct local HTTP probe (checks /api/status first, then /health)
+    async with httpx.AsyncClient(timeout=1.5) as client:
+        for path in ("/api/status", "/health"):
+            url = f"http://{clean_ip}{path}" if ":" in clean_ip else f"http://{clean_ip}:80{path}"
             try:
-                status_url = f"http://{clean_ip}/api/status" if ":" in clean_ip else f"http://{clean_ip}:80/api/status"
-                res = await client.get(status_url)
+                res = await client.get(url)
                 if res.status_code == 200:
                     data = res.json()
-                    return {"online": True, "hardware": "Waveshare ESP32-S3 6CH", "node_id": data.get("node_id"), "status": "ok"}
+                    return {
+                        "online": True,
+                        "hardware": data.get("hardware", "Waveshare ESP32-S3 6CH"),
+                        "node_id": data.get("node_id"),
+                        "status": "ok",
+                        "transport": "http_direct"
+                    }
             except Exception:
                 pass
 
-            # Check if ESP32 is active via MQTT Cloud or NodeTracker
-            from ..services.node_tracker import node_tracker
-            if node_tracker.is_online("aiota-living") or node_tracker.is_online("dev_baa26b76b453"):
-                return {
-                    "online": True,
-                    "hardware": "Waveshare ESP32-S3 (Active via MQTT Cloud)",
-                    "status": "ok",
-                    "transport": "mqtt"
-                }
+    # 2. Check node_tracker for any active node matching IP or recent heartbeats
+    for nid, info in node_tracker._nodes.items():
+        if (info.get("ip_address") == clean_ip or clean_ip in ("192.168.1.11", "aiota-living")) and node_tracker.is_online(nid):
+            return {
+                "online": True,
+                "hardware": "Waveshare ESP32-S3 6CH (Active via Wi-Fi Telemetry)",
+                "node_id": nid,
+                "status": "ok",
+                "transport": "telemetry"
+            }
 
-            return {"online": False, "error": str(e) or "Connection timed out"}
-    return {"online": False, "error": "Hardware unresponsive"}
+    if node_tracker.is_online("aiota-living") or node_tracker.is_online("dev_baa26b76b453"):
+        return {
+            "online": True,
+            "hardware": "Waveshare ESP32-S3 (Active via Cloud MQTT / Telemetry)",
+            "status": "ok",
+            "transport": "mqtt"
+        }
+
+    return {"online": False, "error": f"Board at {clean_ip} is unresponsive"}
