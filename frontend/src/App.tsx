@@ -167,14 +167,17 @@ export default function App() {
     localStorage.setItem('aiota-theme', theme)
   }, [theme])
 
-  // Prioritize physical ESP32 telemetry from 'aiota-living'
+  const activeRoom = rooms.find((r) => r.id === selectedRoomId) || rooms[0]
+  const activeRoomNode = nodes.find((n) => n.room_name?.toLowerCase() === activeRoom?.name?.toLowerCase())
+
+  // Prioritize physical ESP32 telemetry from active room or 'aiota-living'
   const livingTelemetry = telemetry.filter((t) => t.node_id === 'aiota-living')
   const latest = livingTelemetry.length > 0 ? livingTelemetry[livingTelemetry.length - 1] : telemetry[telemetry.length - 1]
-  const isOccupied = Boolean(latest?.motion)
+  const isOccupied = activeRoomNode?.motion ?? Boolean(latest?.motion)
 
   // Calibrate & filter temperature and humidity against sensor saturation/board self-heating
-  const rawTemp = latest?.temperature
-  const rawHum = latest?.humidity
+  const rawTemp = activeRoomNode?.temperature ?? latest?.temperature
+  const rawHum = activeRoomNode?.humidity ?? latest?.humidity
   const displayTemp = rawTemp != null
     ? Math.max(15, Math.min(50, Number((rawTemp + tempOffset).toFixed(1))))
     : 25.4
@@ -192,8 +195,6 @@ export default function App() {
   const recentMotion = telemetry.slice(-4).some((t) => t.motion)
 
   const filteredDevices = devices.filter((d) => d.room_id === selectedRoomId)
-
-  const activeRoom = rooms.find((r) => r.id === selectedRoomId) || rooms[0]
   const activeInRoom = activeRoom && activeRoom.devices ? activeRoom.devices.filter((d) => d.is_on).length : 0
 
   const hr = new Date().getHours()

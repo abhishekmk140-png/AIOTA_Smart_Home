@@ -56,8 +56,13 @@ async def lifespan(app: FastAPI):
     if settings.simulate_telemetry:
         sim_task = asyncio.create_task(run_telemetry_simulator())
 
+    # Start multi-room MQTT sync service (Gallery, Engineering Hub, Conference)
+    from .services.mqtt_multi_sync import run_mqtt_multi_sync
+    sync_task = asyncio.create_task(run_mqtt_multi_sync())
+
     yield
 
+    sync_task.cancel()
     if sim_task:
         sim_task.cancel()
         try:
