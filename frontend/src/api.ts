@@ -1,6 +1,6 @@
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
 
-export const DEFAULT_REMOTE_BACKEND = 'https://ends-include-humanity-opened.trycloudflare.com'
+export const DEFAULT_REMOTE_BACKEND = 'https://analyst-hebrew-liverpool-deutsche.trycloudflare.com'
 
 export function getApiBase(): string {
   if (typeof window !== 'undefined') {

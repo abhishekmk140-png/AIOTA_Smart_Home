@@ -69,7 +69,7 @@ export default function App() {
     const saved = localStorage.getItem('aiota-backend-url')
     if (saved) return saved
     if (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')) {
-      return 'https://ends-include-humanity-opened.trycloudflare.com'
+      return 'https://analyst-hebrew-liverpool-deutsche.trycloudflare.com'
     }
     return typeof window !== 'undefined' ? window.location.origin : ''
   })
