@@ -1,9 +1,36 @@
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
 
-const API = import.meta.env.VITE_API_URL || ''
+export const DEFAULT_REMOTE_BACKEND = 'https://ends-include-humanity-opened.trycloudflare.com'
+
+export function getApiBase(): string {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('aiota-backend-url')
+    if (saved) return saved.trim().replace(/\/+$/, '')
+    if (window.location.hostname.endsWith('vercel.app')) {
+      return DEFAULT_REMOTE_BACKEND
+    }
+  }
+  return (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '')
+}
+
+export function getWsUrl(): string {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('aiota-backend-url')
+    const remote = saved || (window.location.hostname.endsWith('vercel.app') ? DEFAULT_REMOTE_BACKEND : '')
+    if (remote) {
+      try {
+        const u = new URL(remote)
+        return `${u.protocol === 'https:' ? 'wss:' : 'ws:'}//${u.host}/ws`
+      } catch {}
+    }
+    return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
+  }
+  return import.meta.env.VITE_WS_URL || 'ws://localhost:5173/ws'
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const base = getApiBase()
+  const res = await fetch(`${base}${path}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
   })
@@ -49,8 +76,4 @@ export const api = {
   nodes: () => request<NodeStatus[]>('/api/nodes'),
 }
 
-export const wsUrl =
-  import.meta.env.VITE_WS_URL ||
-  (typeof window !== 'undefined'
-    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
-    : 'ws://localhost:5173/ws')
+export const wsUrl = getWsUrl()

@@ -65,7 +65,14 @@ export default function App() {
   const [wifiSsid, setWifiSsid] = useState('Airtel_AIOTA.tech')
   const [wifiPassword, setWifiPassword] = useState('')
   const [wifiStatus, setWifiStatus] = useState('Connected (192.168.1.10)')
-  const [apiHostInput, setApiHostInput] = useState(window.location.origin)
+  const [apiHostInput, setApiHostInput] = useState(() => {
+    const saved = localStorage.getItem('aiota-backend-url')
+    if (saved) return saved
+    if (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')) {
+      return 'https://ends-include-humanity-opened.trycloudflare.com'
+    }
+    return typeof window !== 'undefined' ? window.location.origin : ''
+  })
   const [pingLatency, setPingLatency] = useState<string | null>('2 ms')
 
   // ESP32 Hardware IP state
@@ -557,18 +564,21 @@ export default function App() {
   // Wi-Fi & Host settings functions
   async function testHostConnection() {
     const start = performance.now()
+    const target = apiHostInput.trim().replace(/\/+$/, '')
     try {
-      const res = await fetch(`${apiHostInput}/api/health`)
+      const res = await fetch(`${target}/api/health`)
       const elapsed = Math.round(performance.now() - start)
       if (res.ok) {
         setPingLatency(`${elapsed} ms · Operational`)
-        setToastMsg(`Connected to ${apiHostInput} (${elapsed} ms)`)
+        localStorage.setItem('aiota-backend-url', target)
+        setToastMsg(`Connected to backend (${elapsed} ms)`)
+        await refresh()
       } else {
         setPingLatency('Error')
       }
     } catch {
       setPingLatency('Offline')
-      setError(`Cannot reach ${apiHostInput}`)
+      setError(`Cannot reach ${target}`)
     }
   }
 

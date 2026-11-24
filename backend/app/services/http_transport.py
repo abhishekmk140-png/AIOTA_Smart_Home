@@ -91,5 +91,16 @@ async def probe_esp32_hardware(ip_address: str) -> dict:
                     return {"online": True, "hardware": "Waveshare ESP32-S3 6CH", "node_id": data.get("node_id"), "status": "ok"}
             except Exception:
                 pass
+
+            # Check if ESP32 is active via MQTT Cloud or NodeTracker
+            from ..services.node_tracker import node_tracker
+            if node_tracker.is_online("aiota-living") or node_tracker.is_online("dev_baa26b76b453"):
+                return {
+                    "online": True,
+                    "hardware": "Waveshare ESP32-S3 (Active via MQTT Cloud)",
+                    "status": "ok",
+                    "transport": "mqtt"
+                }
+
             return {"online": False, "error": str(e) or "Connection timed out"}
     return {"online": False, "error": "Hardware unresponsive"}
