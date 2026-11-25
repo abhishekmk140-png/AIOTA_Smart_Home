@@ -6,7 +6,7 @@ import {
   Trash2, Wifi, Zap, X, PlugZap, Activity as ActivityIcon, Sliders, Globe, RefreshCw,
   Volume2, VolumeX, Sparkles, UserCheck, Users
 } from 'lucide-react'
-import { api, wsUrl } from './api'
+import { api, wsUrl, DEFAULT_REMOTE_BACKEND } from './api'
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
 
 type Tab = 'home' | 'automation' | 'energy' | 'security' | 'settings'
@@ -66,10 +66,14 @@ export default function App() {
   const [wifiPassword, setWifiPassword] = useState('')
   const [wifiStatus, setWifiStatus] = useState('Connected (192.168.1.10)')
   const [apiHostInput, setApiHostInput] = useState(() => {
-    const saved = localStorage.getItem('aiota-backend-url')
+    let saved = localStorage.getItem('aiota-backend-url')
+    if (saved && saved.includes('trycloudflare.com') && saved !== DEFAULT_REMOTE_BACKEND) {
+      localStorage.setItem('aiota-backend-url', DEFAULT_REMOTE_BACKEND)
+      saved = DEFAULT_REMOTE_BACKEND
+    }
     if (saved) return saved
     if (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')) {
-      return 'https://saturday-tracy-patches-wings.trycloudflare.com'
+      return DEFAULT_REMOTE_BACKEND
     }
     return typeof window !== 'undefined' ? window.location.origin : ''
   })
@@ -163,10 +167,10 @@ export default function App() {
             refresh()
             return
           }
-        } catch {}
+        } catch { }
       }
       return () => ws.close()
-    } catch {}
+    } catch { }
   }, [])
 
   useEffect(() => {
@@ -209,10 +213,10 @@ export default function App() {
     hr < 12
       ? { title: 'Good morning! ☀️', sub: 'Hope your day starts bright and joyful' }
       : hr < 17
-      ? { title: 'Good afternoon! 🌤️', sub: 'Everything running smoothly at home' }
-      : hr < 21
-      ? { title: 'Good evening! 🌆', sub: 'Time to unwind and relax in comfort' }
-      : { title: 'Cozy night! 🌙', sub: 'Rest easy, AIOTA is keeping watch' }
+        ? { title: 'Good afternoon! 🌤️', sub: 'Everything running smoothly at home' }
+        : hr < 21
+          ? { title: 'Good evening! 🌆', sub: 'Time to unwind and relax in comfort' }
+          : { title: 'Cozy night! 🌙', sub: 'Rest easy, AIOTA is keeping watch' }
 
   // Joyful Haptic Audio Feedback via Web Audio API (zero latency, no assets needed)
   function playHapticPop(isOn: boolean) {
@@ -246,7 +250,7 @@ export default function App() {
         osc.start(now)
         osc.stop(now + 0.05)
       }
-    } catch {}
+    } catch { }
   }
 
   // Celebratory Floating Sparkles Burst
@@ -562,9 +566,9 @@ export default function App() {
   }
 
   // Wi-Fi & Host settings functions
-  async function testHostConnection() {
+  async function testHostConnectionTarget(targetUrl?: string) {
     const start = performance.now()
-    const target = apiHostInput.trim().replace(/\/+$/, '')
+    const target = (targetUrl || apiHostInput).trim().replace(/\/+$/, '')
     try {
       const res = await fetch(`${target}/api/health`)
       const elapsed = Math.round(performance.now() - start)
@@ -580,6 +584,10 @@ export default function App() {
       setPingLatency('Offline')
       setError(`Cannot reach ${target}`)
     }
+  }
+
+  async function testHostConnection() {
+    return testHostConnectionTarget()
   }
 
   async function handleApplyEsp32Ip() {
@@ -1268,6 +1276,21 @@ export default function App() {
                   <RefreshCw size={14} style={{ marginRight: 6 }} /> Test Ping
                 </button>
               </div>
+              {apiHostInput !== DEFAULT_REMOTE_BACKEND && (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    className="master-chip on"
+                    style={{ fontSize: 11, padding: '5px 12px', height: 'auto', borderRadius: 8, cursor: 'pointer' }}
+                    onClick={() => {
+                      setApiHostInput(DEFAULT_REMOTE_BACKEND)
+                      localStorage.setItem('aiota-backend-url', DEFAULT_REMOTE_BACKEND)
+                      testHostConnectionTarget(DEFAULT_REMOTE_BACKEND)
+                    }}
+                  >
+                    Click to switch to active live tunnel ({DEFAULT_REMOTE_BACKEND.replace('https://', '')})
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* ESP32 Hardware Relays Board Configuration */}
@@ -1450,18 +1473,18 @@ export default function App() {
               {(nodes.length
                 ? nodes
                 : rooms.map((r, i) => ({
-                    node_id: `aiota-node-${r.id}`,
-                    name: `ESP32 Node · ${r.name}`,
-                    room_name: r.name,
-                    online: true,
-                    ip_address: esp32Ip || '192.168.1.32',
-                    relay_count: r.devices.length,
-                    active_relays: r.devices.filter((d) => d.is_on).length,
-                    temperature: 24.8 + i * 0.4,
-                    humidity: 52 + i * 2,
-                    motion: false,
-                    last_seen: null,
-                  }))
+                  node_id: `aiota-node-${r.id}`,
+                  name: `ESP32 Node · ${r.name}`,
+                  room_name: r.name,
+                  online: true,
+                  ip_address: esp32Ip || '192.168.1.32',
+                  relay_count: r.devices.length,
+                  active_relays: r.devices.filter((d) => d.is_on).length,
+                  temperature: 24.8 + i * 0.4,
+                  humidity: 52 + i * 2,
+                  motion: false,
+                  last_seen: null,
+                }))
               ).map((n) => (
                 <div key={n.node_id} className="room-master-card" style={{ marginBottom: 0, padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

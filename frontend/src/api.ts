@@ -4,7 +4,12 @@ export const DEFAULT_REMOTE_BACKEND = 'https://saturday-tracy-patches-wings.tryc
 
 export function getApiBase(): string {
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('aiota-backend-url')
+    let saved = localStorage.getItem('aiota-backend-url')
+    // Automatically migrate stale / expired trycloudflare tunnel URLs to active tunnel
+    if (saved && saved.includes('trycloudflare.com') && saved !== DEFAULT_REMOTE_BACKEND) {
+      localStorage.setItem('aiota-backend-url', DEFAULT_REMOTE_BACKEND)
+      saved = DEFAULT_REMOTE_BACKEND
+    }
     if (saved) return saved.trim().replace(/\/+$/, '')
     if (window.location.hostname.endsWith('vercel.app')) {
       return DEFAULT_REMOTE_BACKEND
@@ -15,13 +20,17 @@ export function getApiBase(): string {
 
 export function getWsUrl(): string {
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('aiota-backend-url')
+    let saved = localStorage.getItem('aiota-backend-url')
+    if (saved && saved.includes('trycloudflare.com') && saved !== DEFAULT_REMOTE_BACKEND) {
+      localStorage.setItem('aiota-backend-url', DEFAULT_REMOTE_BACKEND)
+      saved = DEFAULT_REMOTE_BACKEND
+    }
     const remote = saved || (window.location.hostname.endsWith('vercel.app') ? DEFAULT_REMOTE_BACKEND : '')
     if (remote) {
       try {
         const u = new URL(remote)
         return `${u.protocol === 'https:' ? 'wss:' : 'ws:'}//${u.host}/ws`
-      } catch {}
+      } catch { }
     }
     return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
   }
