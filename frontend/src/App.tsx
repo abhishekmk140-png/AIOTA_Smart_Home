@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { api, wsUrl, DEFAULT_REMOTE_BACKEND } from './api'
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
-import { Live3DEnvironmentGraphs } from './Live3DEnvironmentGraphs'
+import { LiveEnvironmentGraphs } from './LiveEnvironmentGraphs'
 
 type Tab = 'home' | 'automation' | 'energy' | 'security' | 'settings'
 
@@ -1003,8 +1003,8 @@ export default function App() {
         {/* 2. AUTOMATION TAB */}
         {tab === 'automation' && (
           <div className="app-section">
-            {/* Live 3D Environmental Telemetry Graph */}
-            <Live3DEnvironmentGraphs
+            {/* Live Environmental Telemetry Graphs */}
+            <LiveEnvironmentGraphs
               telemetry={telemetry}
               currentTemp={displayTemp}
               currentHum={displayHum}
