@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { api, wsUrl, DEFAULT_REMOTE_BACKEND } from './api'
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
+import { Live3DEnvironmentGraphs } from './Live3DEnvironmentGraphs'
 
 type Tab = 'home' | 'automation' | 'energy' | 'security' | 'settings'
 
@@ -1009,6 +1010,16 @@ export default function App() {
                 <button className="section-action-link" onClick={() => setShowAddRule(true)}>+ New Rule</button>
               </div>
             </div>
+
+            {/* Live 3D Environmental Telemetry Graph */}
+            <Live3DEnvironmentGraphs
+              telemetry={telemetry}
+              currentTemp={displayTemp}
+              currentHum={displayHum}
+              currentAir={latest?.air_quality != null ? latest.air_quality : 32}
+              tempOffset={tempOffset}
+              humOffset={humOffset}
+            />
 
             <h4 style={{ margin: '14px 0 8px', fontSize: 13, color: 'var(--muted)' }}>ONE-TOUCH SCENES</h4>
             <div style={{ display: 'grid', gap: 10 }}>
