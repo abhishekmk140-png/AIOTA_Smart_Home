@@ -94,26 +94,18 @@ async def probe_esp32_hardware(ip_address: str) -> dict:
             except Exception:
                 pass
 
-    # 2. Check node_tracker for any active node matching IP or recent heartbeats
-    for nid, info in node_tracker._nodes.items():
-        if node_tracker.is_online(nid):
-            live_ip = info.get("ip_address") or "192.168.1.34"
+    # 2. Check if physical ESP32 node (aiota-living) is actively streaming real telemetry
+    living_node = node_tracker._nodes.get("aiota-living")
+    if living_node and node_tracker.is_online("aiota-living", timeout_seconds=20):
+        real_ip = living_node.get("ip_address")
+        if real_ip:
             return {
                 "online": True,
-                "hardware": f"Waveshare ESP32-S3 6CH (Active on {live_ip})",
-                "node_id": nid,
-                "ip_address": live_ip,
+                "hardware": f"Waveshare ESP32-S3 6CH (Live on {real_ip})",
+                "node_id": "aiota-living",
+                "ip_address": real_ip,
                 "status": "ok",
                 "transport": "telemetry"
             }
 
-    if node_tracker.is_online("aiota-living") or node_tracker.is_online("dev_baa26b76b453"):
-        return {
-            "online": True,
-            "hardware": "Waveshare ESP32-S3 (Active via Cloud MQTT / Telemetry)",
-            "ip_address": "192.168.1.34",
-            "status": "ok",
-            "transport": "mqtt"
-        }
-
-    return {"online": False, "error": f"Board at {clean_ip} is unresponsive"}
+    return {"online": False, "error": f"Physical board at {clean_ip} is unreachable (Offline/Power/Wi-Fi issue)"}
