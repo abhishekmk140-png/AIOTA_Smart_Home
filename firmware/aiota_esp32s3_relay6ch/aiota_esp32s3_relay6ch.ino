@@ -18,6 +18,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <Wire.h>
+#include "driver/gpio.h"
 
 // Wi-Fi Configuration
 const char* WIFI_SSID = "Airtel_AIOTA.tech";
@@ -50,8 +51,10 @@ const uint8_t AIR_QUALITY_PIN = 5;
 const uint8_t I2C_SDA_PIN = 8;
 const uint8_t I2C_SCL_PIN = 9;
 
-// Relay Active Level (true = HIGH energizes relay; false = LOW energizes relay)
+// Relay & Sensor Active Levels
 const bool RELAY_ACTIVE_HIGH = true;
+// Set to true for standard PIR (HIGH = motion). Set to false for Active-LOW / NC sensors.
+const bool PIR_ACTIVE_HIGH = true;
 
 bool relayState[6] = {false, false, false, false, false, false};
 WiFiClient wifiClient;
@@ -217,7 +220,22 @@ void sendHeartbeat() {
 
   float temp = 0.0, hum = 0.0;
   bool hasSensor = readAM2315C(temp, hum);
-  bool motion = digitalRead(PIR_PIN) == HIGH;
+
+  // Robust debounced PIR sampling (5 samples across 2ms)
+  int pirHighCount = 0;
+  for (int s = 0; s < 5; s++) {
+    if (digitalRead(PIR_PIN) == HIGH) pirHighCount++;
+    delayMicroseconds(500);
+  }
+  bool rawPinLevel = (pirHighCount >= 4);
+  bool motion = (PIR_ACTIVE_HIGH ? rawPinLevel : !rawPinLevel);
+
+  // 30-second initial stabilization guard after boot
+  if (millis() < 30000) {
+    motion = false;
+  }
+  Serial.printf("[PIR] GPIO%u (H1 Pin 15) Raw: %d | Filtered Motion: %s\n", PIR_PIN, rawPinLevel ? 1 : 0, motion ? "OCCUPIED" : "CLEAR");
+
   int rawAir = analogRead(AIR_QUALITY_PIN);
   float airAqi = map(rawAir, 0, 4095, 10, 200);
 
@@ -298,7 +316,12 @@ void setup() {
   }
 
   // Sensor Inputs
-  pinMode(PIR_PIN, INPUT_PULLDOWN);
+  // Force hardware internal pull-down on PIR input (GPIO 4 is Pin 15 on Header H1)
+  gpio_reset_pin((gpio_num_t)PIR_PIN);
+  gpio_set_direction((gpio_num_t)PIR_PIN, GPIO_MODE_INPUT);
+  gpio_pulldown_en((gpio_num_t)PIR_PIN);
+  gpio_pullup_dis((gpio_num_t)PIR_PIN);
+
   pinMode(AIR_QUALITY_PIN, INPUT);
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   initAM2315C();

@@ -100,6 +100,7 @@ export default function App() {
     const s = localStorage.getItem('aiota-hum-offset')
     return s ? parseFloat(s) : 0
   })
+  const [pirInverted, setPirInverted] = useState<boolean>(() => localStorage.getItem('aiota-pir-inverted') === 'true')
 
   const [listening, setListening] = useState(false)
   const [isArmed, setIsArmed] = useState(true)
@@ -184,7 +185,8 @@ export default function App() {
   // Prioritize physical ESP32 telemetry from active room or 'aiota-living'
   const livingTelemetry = telemetry.filter((t) => t.node_id === 'aiota-living')
   const latest = livingTelemetry.length > 0 ? livingTelemetry[livingTelemetry.length - 1] : telemetry[telemetry.length - 1]
-  const isOccupied = activeRoomNode?.motion ?? Boolean(latest?.motion)
+  const rawMotion = activeRoomNode?.motion ?? Boolean(latest?.motion)
+  const isOccupied = pirInverted ? !rawMotion : rawMotion
 
   // Calibrate & filter temperature and humidity against sensor saturation/board self-heating
   const rawTemp = activeRoomNode?.temperature ?? latest?.temperature
@@ -779,6 +781,18 @@ export default function App() {
                         <span className="pir-pulse-dot" />
                         {isOccupied ? 'Occupied' : 'Not Occupied'}
                       </span>
+                      <button
+                        className="master-chip"
+                        style={{ fontSize: 10, padding: '2px 8px', height: 'auto', borderRadius: 6, cursor: 'pointer' }}
+                        onClick={() => {
+                          const nv = !pirInverted
+                          setPirInverted(nv)
+                          localStorage.setItem('aiota-pir-inverted', String(nv))
+                          setToastMsg(`PIR logic set to ${nv ? 'Active-LOW (Inverted)' : 'Active-HIGH (Standard)'}`)
+                        }}
+                      >
+                        {pirInverted ? 'Mode: Inverted' : 'Mode: Standard'}
+                      </button>
                     </div>
                     <span className="pir-banner-sub">
                       {isOccupied
@@ -788,7 +802,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="pir-banner-right">
-                  <span className="pir-node-tag">ESP32-S3 · GPIO 4</span>
+                  <span className="pir-node-tag">Header H1 Pin 15 · GPIO 4</span>
                 </div>
               </div>
             </div>
@@ -1447,6 +1461,33 @@ export default function App() {
                 >
                   Reset to Default (-1.5°C)
                 </button>
+              </div>
+            </div>
+
+            {/* PIR Motion Sensor Wiring & Mode */}
+            <div className="room-master-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12, marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 14 }}>PIR Motion Sensor (GPIO 4 · Header H1 Pin 15)</h4>
+                  <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--muted)' }}>
+                    Wiring: VCC ➔ Pin 1 (5V) · GND ➔ Pin 3 (GND) · Signal OUT ➔ <b>Pin 15 (GPIO 4)</b>
+                  </p>
+                </div>
+                <button
+                  className={`master-chip ${pirInverted ? 'on' : ''}`}
+                  style={{ fontSize: 11, padding: '5px 12px', height: 'auto', borderRadius: 8, cursor: 'pointer' }}
+                  onClick={() => {
+                    const nv = !pirInverted
+                    setPirInverted(nv)
+                    localStorage.setItem('aiota-pir-inverted', String(nv))
+                    setToastMsg(`PIR logic set to ${nv ? 'Active-LOW (Inverted)' : 'Active-HIGH (Standard)'}`)
+                  }}
+                >
+                  {pirInverted ? '⚡ Invert Mode ON (Active-LOW)' : '⚡ Standard Mode (Active-HIGH)'}
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', background: 'var(--panel)', padding: '8px 12px', borderRadius: 8, lineHeight: 1.5 }}>
+                ⚠️ <b>Crucial Wiring Note:</b> On the Waveshare 40-pin header, <b>GPIO 4 is physical Pin 15</b>. Physical Pin 4 is tied directly to the 3.3V power rail — plugging your signal into Pin 4 forces the line to permanent 3.3V DC (showing Occupied even when unplugged)!
               </div>
             </div>
 
