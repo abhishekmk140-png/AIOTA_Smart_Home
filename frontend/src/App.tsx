@@ -1003,14 +1003,6 @@ export default function App() {
         {/* 2. AUTOMATION TAB */}
         {tab === 'automation' && (
           <div className="app-section">
-            <div className="section-head-row">
-              <h3>Automations & Scenes</h3>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="section-action-link" onClick={() => openSceneModal()}>+ New Scene</button>
-                <button className="section-action-link" onClick={() => setShowAddRule(true)}>+ New Rule</button>
-              </div>
-            </div>
-
             {/* Live 3D Environmental Telemetry Graph */}
             <Live3DEnvironmentGraphs
               telemetry={telemetry}
@@ -1020,79 +1012,6 @@ export default function App() {
               tempOffset={tempOffset}
               humOffset={humOffset}
             />
-
-            <h4 style={{ margin: '14px 0 8px', fontSize: 13, color: 'var(--muted)' }}>ONE-TOUCH SCENES</h4>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {scenes.map((s) => {
-                const SIcon = sceneIconFor(s.icon)
-                return (
-                  <div key={s.id} className="room-master-card" style={{ marginBottom: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div className="tile-icon-bubble" style={{ width: 36, height: 36, background: 'var(--panel-subtle)' }}>
-                        <SIcon size={18} />
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: 14 }}>{s.name}</h4>
-                        <p>{s.description || `${s.actions.length} channels configured`}</p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <button className="master-chip on" onClick={() => handleApplyScene(s.id)}>
-                        RUN
-                      </button>
-                      <button
-                        className="icon-pill-btn"
-                        style={{ width: 30, height: 30 }}
-                        title="Configure scene rooms"
-                        onClick={() => openSceneModal(s)}
-                      >
-                        <Sliders size={13} />
-                      </button>
-                      <button
-                        className="icon-pill-btn"
-                        style={{ width: 30, height: 30 }}
-                        title="Delete scene"
-                        onClick={() => handleDeleteScene(s.id, s.name)}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <h4 style={{ margin: '22px 0 8px', fontSize: 13, color: 'var(--muted)' }}>IF / THEN AUTOMATION RULES</h4>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {rules.map((r) => (
-                <div key={r.id} className="room-master-card" style={{ marginBottom: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div className="tile-icon-bubble" style={{ width: 36, height: 36 }}>
-                      <Bot size={18} />
-                    </div>
-                    <div>
-                      <h4 style={{ fontSize: 14 }}>{r.name}</h4>
-                      <p>IF {r.sensor} {r.operator} {r.threshold_value} &rarr; {r.action === 'turn_on' ? 'TURN ON' : 'TURN OFF'}</p>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div
-                      className={`mobile-toggle ${r.is_enabled ? 'on' : ''}`}
-                      onClick={() => handleToggleRule(r.id)}
-                    >
-                      <span />
-                    </div>
-                    <button
-                      className="icon-pill-btn"
-                      style={{ width: 30, height: 30 }}
-                      onClick={() => handleDeleteRule(r.id)}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
