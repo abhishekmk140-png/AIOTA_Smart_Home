@@ -4,7 +4,7 @@ import {
   Layers, Lightbulb, Mic, Moon, MoreVertical, Play, Plus, Power, Radio,
   Search, Settings, Shield, ShieldAlert, ShieldCheck, Sun, Thermometer,
   Trash2, Wifi, Zap, X, PlugZap, Activity as ActivityIcon, Sliders, Globe, RefreshCw,
-  Volume2, VolumeX, Sparkles, UserCheck, Users
+  UserCheck, Users
 } from 'lucide-react'
 import { api, wsUrl, DEFAULT_REMOTE_BACKEND } from './api'
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
@@ -87,10 +87,6 @@ export default function App() {
   })
   const [esp32Status, setEsp32Status] = useState<string | null>(null)
   const [isTestingEsp32, setIsTestingEsp32] = useState(false)
-
-  // Joyful Sound & Sparkles State
-  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('aiota-muted') === 'true')
-  const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number; emoji: string }[]>([])
 
   // Temperature & Humidity Sensor Calibration Offsets
   const [tempOffset, setTempOffset] = useState<number>(() => {
@@ -212,82 +208,20 @@ export default function App() {
   const activeInRoom = activeRoom && activeRoom.devices ? activeRoom.devices.filter((d) => d.is_on).length : 0
 
   const hr = new Date().getHours()
-  const joyfulGreeting =
+  const greeting =
     hr < 12
-      ? { title: 'Good morning! ☀️', sub: 'Hope your day starts bright and joyful' }
+      ? { title: 'Good morning', sub: 'Control and monitor your smart home' }
       : hr < 17
-        ? { title: 'Good afternoon! 🌤️', sub: 'Everything running smoothly at home' }
-        : hr < 21
-          ? { title: 'Good evening! 🌆', sub: 'Time to unwind and relax in comfort' }
-          : { title: 'Cozy night! 🌙', sub: 'Rest easy, AIOTA is keeping watch' }
+        ? { title: 'Good afternoon', sub: 'Control and monitor your smart home' }
+        : { title: 'Good evening', sub: 'Control and monitor your smart home' }
 
-  // Joyful Haptic Audio Feedback via Web Audio API (zero latency, no assets needed)
-  function playHapticPop(isOn: boolean) {
-    if (isMuted) return
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-      if (!AudioCtx) return
-      const ctx = new AudioCtx()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      const now = ctx.currentTime
-
-      if (isOn) {
-        // Bright cheerful rising bubble pop (C5 -> C6)
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(520, now)
-        osc.frequency.exponentialRampToValueAtTime(1040, now + 0.08)
-        gain.gain.setValueAtTime(0.08, now)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
-        osc.start(now)
-        osc.stop(now + 0.08)
-      } else {
-        // Gentle soft release click
-        osc.type = 'triangle'
-        osc.frequency.setValueAtTime(380, now)
-        osc.frequency.exponentialRampToValueAtTime(200, now + 0.05)
-        gain.gain.setValueAtTime(0.05, now)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
-        osc.start(now)
-        osc.stop(now + 0.05)
-      }
-    } catch { }
-  }
-
-  // Celebratory Floating Sparkles Burst
-  function triggerSparkleBurst(e?: React.MouseEvent) {
-    const emojis = ['✨', '🌟', '🎉', '⚡', '💫', '🪄']
-    const x = e ? e.clientX : window.innerWidth / 2
-    const y = e ? e.clientY : window.innerHeight / 3
-
-    const newSparks = Array.from({ length: 6 }).map((_, i) => ({
-      id: Date.now() + i,
-      x: x + (Math.random() * 80 - 40),
-      y: y + (Math.random() * 60 - 30),
-      emoji: emojis[Math.floor(Math.random() * emojis.length)],
-    }))
-
-    setSparkles((prev) => [...prev, ...newSparks])
-    setTimeout(() => {
-      setSparkles((prev) => prev.filter((s) => !newSparks.some((n) => n.id === s.id)))
-    }, 1200)
-  }
-
-  function handleSelectTab(newTab: Tab, e: React.MouseEvent) {
-    if (tab !== newTab) {
-      playHapticPop(true)
-      triggerSparkleBurst(e)
-    }
+  function handleSelectTab(newTab: Tab) {
     setTab(newTab)
   }
 
   // 1. Instant Optimistic Toggle (0ms visual latency) - Synced per room node
-  async function toggle(d: Device, e?: React.MouseEvent) {
+  async function toggle(d: Device) {
     const nextState = !d.is_on
-    playHapticPop(nextState)
-    if (nextState && Math.random() < 0.3) triggerSparkleBurst(e)
     const normName = d.name.trim().toLowerCase()
 
     // Find all appliances sharing the exact same channel OR name in this particular room node
@@ -320,13 +254,11 @@ export default function App() {
   }
 
   // 2. Room Master Toggle (Instant update)
-  async function handleToggleRoom(roomId: number, isOn: boolean, e?: React.MouseEvent) {
-    playHapticPop(isOn)
-    if (isOn) triggerSparkleBurst(e)
+  async function handleToggleRoom(roomId: number, isOn: boolean) {
     setDevices((prev) =>
       prev.map((item) => (item.room_id === roomId ? { ...item, is_on: isOn } : item))
     )
-    setToastMsg(`Switched all devices in room ${isOn ? 'ON ✨' : 'OFF'}`)
+    setToastMsg(`Switched all devices in room ${isOn ? 'ON' : 'OFF'}`)
     setTimeout(() => setToastMsg(''), 2500)
 
     try {
@@ -338,9 +270,7 @@ export default function App() {
   }
 
   // 3. Scene Apply (Instant update)
-  async function handleApplyScene(sceneId: number, e?: React.MouseEvent) {
-    playHapticPop(true)
-    triggerSparkleBurst(e)
+  async function handleApplyScene(sceneId: number) {
     const scn = scenes.find((s) => s.id === sceneId)
     if (scn) {
       const actionMap = new Map(scn.actions.map((a) => [a.device_id, a.is_on]))
@@ -348,7 +278,7 @@ export default function App() {
         prev.map((d) => (actionMap.has(d.id) ? { ...d, is_on: actionMap.get(d.id)! } : d))
       )
     }
-    setToastMsg(`Scene activated ✨`)
+    setToastMsg(`Scene activated: ${scn?.name || ''}`)
     setTimeout(() => setToastMsg(''), 2500)
 
     try {
@@ -679,18 +609,6 @@ export default function App() {
               </div>
             </div>
             <div className="top-icons">
-              <button
-                className="icon-pill-btn"
-                title={isMuted ? 'Unmute joyful sounds' : 'Mute joyful sounds'}
-                onClick={() => {
-                  const next = !isMuted
-                  setIsMuted(next)
-                  localStorage.setItem('aiota-muted', String(next))
-                  if (!next) playHapticPop(true)
-                }}
-              >
-                {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
-              </button>
               <button className="icon-pill-btn" title="Toggle theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                 {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
               </button>
@@ -702,8 +620,8 @@ export default function App() {
 
           <div className="user-greeting">
             <div className="greeting-text">
-              <h2>{joyfulGreeting.title}</h2>
-              <p>{joyfulGreeting.sub} · {activeCount} of {devices.length} appliances active</p>
+              <h2>{greeting.title}</h2>
+              <p>{greeting.sub} · {activeCount} of {devices.length} appliances active</p>
             </div>
             <div className="node-pulse-badge">
               <span className="node-pulse-dot" />
@@ -715,12 +633,6 @@ export default function App() {
 
       {/* Main Content Area (Expands to Fullscreen on Laptop) */}
       <div className="app-content-wrapper">
-        {/* Floating Sparkles Burst */}
-        {sparkles.map((s) => (
-          <span key={s.id} className="floating-sparkle-item" style={{ left: s.x, top: s.y }}>
-            {s.emoji}
-          </span>
-        ))}
         {/* Alerts & Toasts */}
         {error && (
           <div className="mobile-alert error">
@@ -886,18 +798,17 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <h4 style={{ margin: 0 }}>{activeRoom.name}</h4>
-                      <span className="joyful-badge">
-                        <Sparkles size={11} />
-                        {activeInRoom > 0 ? `${activeInRoom} on · Glowing ✨` : 'Resting 💤'}
+                      <span className="node-pulse-badge" style={{ fontSize: 11, padding: '2px 8px' }}>
+                        {activeInRoom > 0 ? `${activeInRoom} Active` : 'All Off'}
                       </span>
                     </div>
                     <p style={{ margin: '4px 0 0' }}>{activeRoom.devices.length} channels configured</p>
                   </div>
                   <div className="master-switch-btns">
-                    <button className="master-chip on" onClick={(e) => handleToggleRoom(activeRoom.id, true, e)}>
+                    <button className="master-chip on" onClick={() => handleToggleRoom(activeRoom.id, true)}>
                       ALL ON
                     </button>
-                    <button className="master-chip off" onClick={(e) => handleToggleRoom(activeRoom.id, false, e)}>
+                    <button className="master-chip off" onClick={() => handleToggleRoom(activeRoom.id, false)}>
                       ALL OFF
                     </button>
                   </div>
@@ -947,7 +858,7 @@ export default function App() {
                     <div
                       key={d.id}
                       className={`device-tile ${d.is_on ? 'is-on' : ''} ${isLighting ? 'kind-light' : isFan ? 'kind-fan' : isAc ? 'kind-ac' : 'kind-socket'}`}
-                      onClick={(e) => toggle(d, e)}
+                      onClick={() => toggle(d)}
                     >
                       <div className="tile-top">
                         <div className="tile-icon-bubble">
@@ -1489,11 +1400,11 @@ export default function App() {
         )}
       </div>
 
-      {/* Floating Joyful Bottom Navigation Dock */}
+      {/* Bottom Navigation Dock */}
       <nav className="mobile-bottom-nav">
         <button
           className={`nav-tab-btn ${tab === 'home' ? 'active' : ''}`}
-          onClick={(e) => handleSelectTab('home', e)}
+          onClick={() => handleSelectTab('home')}
         >
           <div className="nav-icon-wrapper">
             <Home size={20} />
@@ -1503,7 +1414,7 @@ export default function App() {
         </button>
         <button
           className={`nav-tab-btn ${tab === 'automation' ? 'active' : ''}`}
-          onClick={(e) => handleSelectTab('automation', e)}
+          onClick={() => handleSelectTab('automation')}
         >
           <div className="nav-icon-wrapper">
             <Bot size={20} />
@@ -1513,7 +1424,7 @@ export default function App() {
         </button>
         <button
           className={`nav-tab-btn ${tab === 'energy' ? 'active' : ''}`}
-          onClick={(e) => handleSelectTab('energy', e)}
+          onClick={() => handleSelectTab('energy')}
         >
           <div className="nav-icon-wrapper">
             <Zap size={20} />
@@ -1523,7 +1434,7 @@ export default function App() {
         </button>
         <button
           className={`nav-tab-btn ${tab === 'security' ? 'active' : ''}`}
-          onClick={(e) => handleSelectTab('security', e)}
+          onClick={() => handleSelectTab('security')}
         >
           <div className="nav-icon-wrapper">
             <Shield size={20} />
@@ -1533,7 +1444,7 @@ export default function App() {
         </button>
         <button
           className={`nav-tab-btn ${tab === 'settings' ? 'active' : ''}`}
-          onClick={(e) => handleSelectTab('settings', e)}
+          onClick={() => handleSelectTab('settings')}
         >
           <div className="nav-icon-wrapper">
             <Settings size={20} />
