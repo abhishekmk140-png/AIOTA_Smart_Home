@@ -344,10 +344,12 @@ void setup() {
 
   // Wi-Fi Connection
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.printf("[WIFI] Connecting to %s...", WIFI_SSID);
   unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 20000) {
     delay(500);
     Serial.print(".");
   }
@@ -388,7 +390,14 @@ void setup() {
 void loop() {
   localServer.handleClient();
 
-  if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED) {
+    static unsigned long lastWifiRetry = 0;
+    if (millis() - lastWifiRetry > 6000) {
+      lastWifiRetry = millis();
+      Serial.println("[WIFI] Disconnected! Attempting auto-reconnect to Wi-Fi...");
+      WiFi.reconnect();
+    }
+  } else {
     if (MQTT_ENABLED) {
       static unsigned long lastMqttRetry = 0;
       if (!mqtt.connected()) {
