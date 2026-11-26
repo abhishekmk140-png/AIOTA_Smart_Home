@@ -293,10 +293,26 @@ void handleHttpRelay() {
 }
 
 void handleHttpStatus() {
+  localServer.sendHeader("Access-Control-Allow-Origin", "*");
   StaticJsonDocument<384> doc;
   doc["node_id"] = NODE_ID;
   doc["ip_address"] = WiFi.localIP().toString();
   doc["rssi"] = WiFi.RSSI();
+
+  // Instant debounced PIR sampling (5 samples across 2ms)
+  int pirHigh = 0;
+  for (int s = 0; s < 5; s++) {
+    if (digitalRead(PIR_PIN) == HIGH) pirHigh++;
+    delayMicroseconds(500);
+  }
+  bool rawPinLevel = (pirHigh >= 4);
+  bool motion = (PIR_ACTIVE_HIGH ? rawPinLevel : !rawPinLevel);
+  if (millis() < 30000) motion = false;
+
+  doc["motion"] = motion;
+  doc["pir_raw"] = rawPinLevel ? 1 : 0;
+  doc["pir_pin"] = PIR_PIN;
+
   JsonArray relays = doc.createNestedArray("relays");
   for (int i = 0; i < 6; i++) relays.add(relayState[i]);
   String out;

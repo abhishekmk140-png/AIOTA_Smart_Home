@@ -82,7 +82,7 @@ export default function App() {
   // ESP32 Hardware IP state
   const [esp32Ip, setEsp32Ip] = useState(() => {
     const saved = localStorage.getItem('aiota-esp32-ip')
-    return saved && saved !== '192.168.1.100' && saved !== '192.168.1.32' ? saved : '192.168.1.11'
+    return saved && saved !== '192.168.1.100' && saved !== '192.168.1.32' && saved !== '192.168.1.11' ? saved : '192.168.1.34'
   })
   const [esp32Status, setEsp32Status] = useState<string | null>(null)
   const [isTestingEsp32, setIsTestingEsp32] = useState(false)
@@ -612,8 +612,13 @@ export default function App() {
     try {
       const res = await api.pingBoard(esp32Ip.trim())
       if (res.online) {
+        const activeIp = res.ip_address || esp32Ip.trim()
+        if (res.ip_address && res.ip_address !== esp32Ip.trim()) {
+          setEsp32Ip(res.ip_address)
+          localStorage.setItem('aiota-esp32-ip', res.ip_address)
+        }
         setEsp32Status(`Connected: ${res.hardware || 'Waveshare ESP32-S3 6CH'}`)
-        setToastMsg(`Waveshare ESP32-S3 reached at ${esp32Ip.trim()}`)
+        setToastMsg(`Waveshare ESP32-S3 reached at ${activeIp}`)
       } else {
         setEsp32Status(`Unreachable: ${res.error || 'Connection failed'}`)
         setError(`Could not reach ESP32 at ${esp32Ip.trim()}`)
@@ -1360,14 +1365,14 @@ export default function App() {
 
               <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  Active ESP32 on Wi-Fi: <strong style={{ color: 'var(--fg)' }}>{devices[0]?.ip_address || '192.168.1.11'}</strong>
+                  Active ESP32 on Wi-Fi: <strong style={{ color: 'var(--fg)' }}>{devices[0]?.ip_address || '192.168.1.34'}</strong>
                 </span>
-                {esp32Ip !== (devices[0]?.ip_address || '192.168.1.11') && (
+                {esp32Ip !== (devices[0]?.ip_address || '192.168.1.34') && (
                   <button
                     className="master-chip on"
                     style={{ fontSize: 10, padding: '3px 10px', height: 'auto', borderRadius: 8 }}
                     onClick={() => {
-                      const ip = devices[0]?.ip_address || '192.168.1.11'
+                      const ip = devices[0]?.ip_address || '192.168.1.34'
                       setEsp32Ip(ip)
                       localStorage.setItem('aiota-esp32-ip', ip)
                       setToastMsg(`Set to live board IP ${ip}`)

@@ -96,11 +96,13 @@ async def probe_esp32_hardware(ip_address: str) -> dict:
 
     # 2. Check node_tracker for any active node matching IP or recent heartbeats
     for nid, info in node_tracker._nodes.items():
-        if (info.get("ip_address") == clean_ip or clean_ip in ("192.168.1.11", "aiota-living")) and node_tracker.is_online(nid):
+        if node_tracker.is_online(nid):
+            live_ip = info.get("ip_address") or "192.168.1.34"
             return {
                 "online": True,
-                "hardware": "Waveshare ESP32-S3 6CH (Active via Wi-Fi Telemetry)",
+                "hardware": f"Waveshare ESP32-S3 6CH (Active on {live_ip})",
                 "node_id": nid,
+                "ip_address": live_ip,
                 "status": "ok",
                 "transport": "telemetry"
             }
@@ -109,6 +111,7 @@ async def probe_esp32_hardware(ip_address: str) -> dict:
         return {
             "online": True,
             "hardware": "Waveshare ESP32-S3 (Active via Cloud MQTT / Telemetry)",
+            "ip_address": "192.168.1.34",
             "status": "ok",
             "transport": "mqtt"
         }

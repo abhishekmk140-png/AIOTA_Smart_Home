@@ -1,6 +1,6 @@
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
 
-export const DEFAULT_REMOTE_BACKEND = 'https://remote-believes-guys-former.trycloudflare.com'
+export const DEFAULT_REMOTE_BACKEND = 'https://variance-notified-minnesota-apparel.trycloudflare.com'
 
 export function getApiBase(): string {
   if (typeof window !== 'undefined') {
@@ -63,7 +63,7 @@ export const api = {
   toggle: (id: number, is_on: boolean) => request<Device>(`/api/devices/${id}/relay`, { method: 'PATCH', body: JSON.stringify({ is_on }) }),
   updateNetwork: (id: number, ip_address: string) => request<Device>(`/api/devices/${id}/network`, { method: 'PATCH', body: JSON.stringify({ ip_address }) }),
   setBoardIp: (ip_address: string, node_id?: string) => request<{ ok: boolean; ip_address: string }>('/api/devices/set-board-ip', { method: 'POST', body: JSON.stringify({ ip_address, node_id }) }),
-  pingBoard: (ip_address: string) => request<{ online: boolean; hardware?: string; error?: string }>('/api/devices/ping-board', { method: 'POST', body: JSON.stringify({ ip_address }) }),
+  pingBoard: (ip_address: string) => request<{ online: boolean; hardware?: string; ip_address?: string; error?: string }>('/api/devices/ping-board', { method: 'POST', body: JSON.stringify({ ip_address }) }),
 
   // Telemetry & Activities
   telemetry: () => request<Telemetry[]>('/api/telemetry'),
