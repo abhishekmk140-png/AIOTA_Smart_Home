@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   AirVent, Bell, Bot, Check, ChevronRight, CircleHelp, Cpu, Edit2, Fan, Home,
   Layers, Lightbulb, Mic, Moon, MoreVertical, Play, Plus, Power, Radio,
@@ -101,6 +101,102 @@ export default function App() {
     return s ? parseFloat(s) : 0
   })
   const [pirInverted, setPirInverted] = useState<boolean>(() => localStorage.getItem('aiota-pir-inverted') === 'true')
+
+  // Draggable & Moveable Bottom Navigation Dock State
+  const navRef = useRef<HTMLElement>(null)
+  const [navPos, setNavPos] = useState<{ x: number; y: number } | null>(() => {
+    try {
+      const s = localStorage.getItem('aiota-nav-pos')
+      if (s) return JSON.parse(s)
+    } catch {}
+    return null
+  })
+  const [isNavDragging, setIsNavDragging] = useState(false)
+  const navDragRef = useRef<{
+    startX: number
+    startY: number
+    dockX: number
+    dockY: number
+    hasMoved: boolean
+  } | null>(null)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setNavPos((prev) => {
+        if (!prev || !navRef.current) return prev
+        const w = navRef.current.offsetWidth || 340
+        const h = navRef.current.offsetHeight || 64
+        const x = Math.max(8, Math.min(window.innerWidth - w - 8, prev.x))
+        const y = Math.max(8, Math.min(window.innerHeight - h - 8, prev.y))
+        return { x, y }
+      })
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const handleNavPointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    const rect = e.currentTarget.getBoundingClientRect()
+    navDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      dockX: rect.left,
+      dockY: rect.top,
+      hasMoved: false,
+    }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
+  }
+
+  const handleNavPointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    const drag = navDragRef.current
+    if (!drag) return
+    const dx = e.clientX - drag.startX
+    const dy = e.clientY - drag.startY
+    if (!drag.hasMoved && Math.hypot(dx, dy) > 5) {
+      drag.hasMoved = true
+      setIsNavDragging(true)
+    }
+    if (drag.hasMoved && navRef.current) {
+      const w = navRef.current.offsetWidth
+      const h = navRef.current.offsetHeight
+      const newX = Math.max(8, Math.min(window.innerWidth - w - 8, drag.dockX + dx))
+      const newY = Math.max(8, Math.min(window.innerHeight - h - 8, drag.dockY + dy))
+      setNavPos({ x: newX, y: newY })
+    }
+  }
+
+  const handleNavPointerUp = () => {
+    const drag = navDragRef.current
+    if (!drag) return
+    if (drag.hasMoved && navPos) {
+      localStorage.setItem('aiota-nav-pos', JSON.stringify(navPos))
+    }
+    setIsNavDragging(false)
+    setTimeout(() => {
+      navDragRef.current = null
+    }, 50)
+  }
+
+  const handleNavPointerCancel = () => {
+    setIsNavDragging(false)
+    navDragRef.current = null
+  }
+
+  const handleNavTabClick = (tabKey: Tab) => {
+    if (navDragRef.current?.hasMoved) return
+    handleSelectTab(tabKey)
+  }
+
+  const handleResetNavPos = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setNavPos(null)
+    localStorage.removeItem('aiota-nav-pos')
+    setToastMsg('Dock position reset to bottom center')
+    setTimeout(() => setToastMsg(''), 2200)
+  }
 
   const [listening, setListening] = useState(false)
   const [isArmed, setIsArmed] = useState(true)
@@ -1482,11 +1578,38 @@ export default function App() {
         )}
       </div>
 
-      {/* Bottom Navigation Dock */}
-      <nav className="mobile-bottom-nav">
+      {/* Bottom Navigation Dock - Moveable & Draggable Anywhere */}
+      <nav
+        ref={navRef}
+        className={`mobile-bottom-nav ${isNavDragging ? 'is-dragging' : ''} ${navPos ? 'is-custom-pos' : ''}`}
+        style={
+          navPos
+            ? {
+                left: `${navPos.x}px`,
+                top: `${navPos.y}px`,
+                bottom: 'auto',
+                transform: isNavDragging ? 'scale(1.03)' : 'none',
+                touchAction: 'none',
+              }
+            : { touchAction: 'none' }
+        }
+        onPointerDown={handleNavPointerDown}
+        onPointerMove={handleNavPointerMove}
+        onPointerUp={handleNavPointerUp}
+        onPointerCancel={handleNavPointerCancel}
+      >
+        {/* Subtle Grip Drag Handle: Double-tap or double-click to snap back to bottom center */}
+        <div
+          className="dock-drag-handle"
+          title="Drag dock to reposition anywhere · Double tap to reset"
+          onDoubleClick={handleResetNavPos}
+        >
+          <span className="dock-drag-bar" />
+        </div>
+
         <button
           className={`nav-tab-btn ${tab === 'home' ? 'active' : ''}`}
-          onClick={() => handleSelectTab('home')}
+          onClick={() => handleNavTabClick('home')}
         >
           <div className="nav-icon-wrapper">
             <Home size={20} />
@@ -1496,7 +1619,7 @@ export default function App() {
         </button>
         <button
           className={`nav-tab-btn ${tab === 'automation' ? 'active' : ''}`}
-          onClick={() => handleSelectTab('automation')}
+          onClick={() => handleNavTabClick('automation')}
         >
           <div className="nav-icon-wrapper">
             <Bot size={20} />
@@ -1506,7 +1629,7 @@ export default function App() {
         </button>
         <button
           className={`nav-tab-btn ${tab === 'energy' ? 'active' : ''}`}
-          onClick={() => handleSelectTab('energy')}
+          onClick={() => handleNavTabClick('energy')}
         >
           <div className="nav-icon-wrapper">
             <Zap size={20} />
@@ -1516,7 +1639,7 @@ export default function App() {
         </button>
         <button
           className={`nav-tab-btn ${tab === 'security' ? 'active' : ''}`}
-          onClick={() => handleSelectTab('security')}
+          onClick={() => handleNavTabClick('security')}
         >
           <div className="nav-icon-wrapper">
             <Shield size={20} />
@@ -1526,7 +1649,7 @@ export default function App() {
         </button>
         <button
           className={`nav-tab-btn ${tab === 'settings' ? 'active' : ''}`}
-          onClick={() => handleSelectTab('settings')}
+          onClick={() => handleNavTabClick('settings')}
         >
           <div className="nav-icon-wrapper">
             <Settings size={20} />
