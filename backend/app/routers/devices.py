@@ -68,8 +68,7 @@ async def set_relay(device_id: int, payload: RelayCommand, db: AsyncSession = De
         # Dispatch physical transport to ESP32 (prevent duplicate commands if multiple aliases share a channel)
         if peer.channel not in dispatched_channels:
             dispatched_channels.add(peer.channel)
-            if peer.ip_address:
-                send_http_relay(peer.ip_address, peer.channel, payload.is_on)
+            send_http_relay(peer.ip_address, peer.channel, payload.is_on)
             publish_relay(peer.node_id, peer.channel, payload.is_on)
 
     ch_summary = ", ".join(f"CH{c}" for c in sorted(dispatched_channels))

@@ -216,7 +216,7 @@ void sendHeartbeat() {
   HTTPClient http;
   http.begin(String(API_BASE) + "/api/telemetry");
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(1200); // 1.2s timeout so HTTP never freezes relay loop
+  http.setTimeout(350); // Ultra-low 350ms timeout so telemetry never blocks relay switching
 
   float temp = 0.0, hum = 0.0;
   bool hasSensor = readAM2315C(temp, hum);
@@ -410,12 +410,15 @@ void loop() {
       }
     }
 
-    // Periodic telemetry heartbeat (every 10 seconds)
-    if (millis() - lastHeartbeat > 10000) {
+    localServer.handleClient();
+
+    // Periodic telemetry heartbeat (every 15 seconds)
+    if (millis() - lastHeartbeat > 15000) {
       lastHeartbeat = millis();
       sendHeartbeat();
       publishState();
+      localServer.handleClient();
     }
   }
-  delay(1);
+  yield();
 }

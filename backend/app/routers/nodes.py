@@ -31,11 +31,12 @@ async def list_nodes(db: AsyncSession = Depends(get_db)):
         cfg = ROOM_CONFIGS.get(room.name, {"node_id": f"dev_room_{room.id}", "delta": 0.0, "hum_delta": 0.0})
         nid = cfg["node_id"]
         tracker_info = node_tracker.get_info(nid)
+        live_tracker_ip = tracker_info.get("ip_address")
 
         dev_res = await db.execute(select(Device).where(Device.room_id == room.id))
         devs = dev_res.scalars().all()
         active_count = sum(1 for d in devs if d.is_on)
-        ip_addr = devs[0].ip_address if devs else "192.168.1.11"
+        ip_addr = live_tracker_ip or (devs[0].ip_address if devs and devs[0].ip_address else "192.168.1.8")
 
         results.append(NodeStatus(
             node_id=nid,
