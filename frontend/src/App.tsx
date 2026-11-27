@@ -798,9 +798,11 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <h4 style={{ margin: 0 }}>{activeRoom.name}</h4>
-                      <span className="node-pulse-badge" style={{ fontSize: 11, padding: '2px 8px' }}>
-                        {activeInRoom > 0 ? `${activeInRoom} Active` : 'All Off'}
-                      </span>
+                      {activeInRoom > 0 && (
+                        <span className="node-pulse-badge" style={{ fontSize: 11, padding: '2px 8px' }}>
+                          {activeInRoom} Active
+                        </span>
+                      )}
                     </div>
                     <p style={{ margin: '4px 0 0' }}>{activeRoom.devices.length} channels configured</p>
                   </div>
