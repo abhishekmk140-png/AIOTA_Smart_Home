@@ -4,7 +4,7 @@ import {
   Layers, Lightbulb, Mic, Moon, MoreVertical, Play, Plus, Power, Radio,
   Search, Settings, Shield, ShieldAlert, ShieldCheck, Sun, Thermometer,
   Trash2, Wifi, Zap, X, PlugZap, Activity as ActivityIcon, Sliders, Globe, RefreshCw,
-  UserCheck, Users
+  UserCheck, Users, Volume2
 } from 'lucide-react'
 import { api, wsUrl, DEFAULT_REMOTE_BACKEND } from './api'
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
@@ -104,6 +104,29 @@ export default function App() {
 
   const [listening, setListening] = useState(false)
   const [isArmed, setIsArmed] = useState(true)
+
+  // AI Voice Engine & Persona States
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [voicePersona, setVoicePersona] = useState<string>(() => {
+    return localStorage.getItem('aiota-voice-persona') || 'nova'
+  })
+
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices()
+      if (v && v.length > 0) {
+        setVoices(v)
+      }
+    }
+    loadVoices()
+    window.speechSynthesis.onvoiceschanged = loadVoices
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = null
+      }
+    }
+  }, [])
 
   async function refresh() {
     try {
@@ -587,26 +610,109 @@ export default function App() {
     }, 1500)
   }
 
-  // Natural Speech-to-Text & Text-to-Speech Assistant
+  // Futuristic AI Audio Chime (Zero-latency Web Audio API)
+  function playAiChime(type: 'listen' | 'reply') {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+      const now = ctx.currentTime
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+
+      if (type === 'listen') {
+        osc.frequency.setValueAtTime(520, now)
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12)
+        gain.gain.setValueAtTime(0.08, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now)
+        osc.stop(now + 0.16)
+      } else {
+        osc.frequency.setValueAtTime(740, now)
+        osc.frequency.exponentialRampToValueAtTime(1040, now + 0.08)
+        gain.gain.setValueAtTime(0.06, now)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now)
+        osc.stop(now + 0.12)
+      }
+    } catch {}
+  }
+
+  function getPersonaVoice(persona: string, vList: SpeechSynthesisVoice[]) {
+    if (!vList || vList.length === 0) return null
+
+    const findVoice = (keywords: string[]) => {
+      return vList.find((v) =>
+        v.lang.startsWith('en') &&
+        keywords.some((kw) => v.name.toLowerCase().includes(kw.toLowerCase()))
+      )
+    }
+
+    if (persona === 'jarvis') {
+      return (
+        findVoice(['guy natural', 'guy online', 'uk english male', 'daniel', 'christopher', 'george', 'oliver', 'male']) ||
+        findVoice(['natural', 'google']) ||
+        vList.find((v) => v.lang.startsWith('en'))
+      )
+    }
+
+    if (persona === 'aria') {
+      return (
+        findVoice(['aria natural', 'aria online', 'uk english female', 'karen', 'zira', 'catherine']) ||
+        findVoice(['natural', 'google']) ||
+        vList.find((v) => v.lang.startsWith('en'))
+      )
+    }
+
+    if (persona === 'echo') {
+      return (
+        findVoice(['google us english', 'samantha', 'jenny', 'steffi']) ||
+        findVoice(['natural', 'google']) ||
+        vList.find((v) => v.lang.startsWith('en'))
+      )
+    }
+
+    // Default: 'nova' (Futuristic Neural AI)
+    return (
+      findVoice(['jenny natural', 'jenny online', 'google us english', 'samantha', 'natural', 'neural']) ||
+      vList.find((v) => v.lang.startsWith('en'))
+    )
+  }
+
+  // Neural AI Voice Speech Synthesis
   function speakReply(text: string) {
     if (!('speechSynthesis' in window)) return
     try {
+      playAiChime('reply')
       window.speechSynthesis.cancel()
       const u = new SpeechSynthesisUtterance(text)
-      u.rate = 1.02
-      u.pitch = 1.0
-      const voices = window.speechSynthesis.getVoices()
-      const preferred =
-        voices.find(
-          (v) =>
-            v.lang.startsWith('en') &&
-            (v.name.includes('Natural') ||
-              v.name.includes('Google') ||
-              v.name.includes('Samantha') ||
-              v.name.includes('Daniel') ||
-              v.default)
-        ) || voices.find((v) => v.lang.startsWith('en'))
-      if (preferred) u.voice = preferred
+
+      // Apply persona tuning
+      if (voicePersona === 'jarvis') {
+        u.pitch = 0.90
+        u.rate = 1.0
+      } else if (voicePersona === 'aria') {
+        u.pitch = 1.05
+        u.rate = 1.02
+      } else if (voicePersona === 'echo') {
+        u.pitch = 1.12
+        u.rate = 1.06
+      } else {
+        // Nova (Futuristic AI)
+        u.pitch = 1.02
+        u.rate = 1.03
+      }
+
+      const vList = voices.length > 0 ? voices : window.speechSynthesis.getVoices()
+      const selectedVoice = getPersonaVoice(voicePersona, vList)
+      if (selectedVoice) {
+        u.voice = selectedVoice
+      }
       window.speechSynthesis.speak(u)
     } catch (err) {
       console.warn('Speech synthesis error:', err)
@@ -638,7 +744,8 @@ export default function App() {
     rec.lang = 'en-US'
     rec.onstart = () => {
       setListening(true)
-      setToastMsg('🎙️ Listening for command…')
+      playAiChime('listen')
+      setToastMsg('🎙️ AI Assistant listening…')
     }
     rec.onend = () => setListening(false)
     rec.onerror = (e: any) => {
@@ -1633,21 +1740,95 @@ export default function App() {
               </div>
             </div>
 
-            {/* Voice Assistant */}
-            <h4 style={{ margin: '20px 0 8px', fontSize: 13, color: 'var(--muted)' }}>VOICE CONTROL</h4>
-            <div className="room-master-card">
-              <div>
-                <h4>Voice Assistant</h4>
-                <p>Speak commands like "Turn on Light 1", "Turn off Fan", "Open Automate", or "Energy settings"</p>
+            {/* AI Voice Assistant */}
+            <h4 style={{ margin: '20px 0 8px', fontSize: 13, color: 'var(--muted)' }}>AI VOICE CONTROL</h4>
+            <div className="card" style={{ padding: 18, marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    AI Voice Assistant
+                    <span className="node-pulse-badge" style={{ fontSize: 10, padding: '2px 8px' }}>
+                      Neural Audio
+                    </span>
+                  </h4>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--muted)' }}>
+                    Speak commands like "Turn on Light 1", "Turn off Fan", "Open Automate", or "Energy settings"
+                  </p>
+                </div>
+                <button
+                  className="master-chip on"
+                  onClick={voice}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px' }}
+                >
+                  <Mic size={15} />
+                  {listening ? 'Listening…' : 'Start Voice'}
+                </button>
               </div>
-              <button
-                className="master-chip on"
-                onClick={voice}
-                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <Mic size={14} />
-                {listening ? 'Listening…' : 'Start Voice'}
-              </button>
+
+              {/* AI Voice Persona Selection */}
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Select AI Voice Persona
+                  </span>
+                  <button
+                    className="master-chip"
+                    style={{ fontSize: 11, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 8, cursor: 'pointer' }}
+                    onClick={() => {
+                      speakReply('Hello! I am your AI smart home assistant. All six relays and environmental sensors are online.')
+                      setToastMsg(`Playing sample of ${voicePersona.toUpperCase()} voice`)
+                    }}
+                  >
+                    <Volume2 size={13} />
+                    Test AI Voice
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
+                  {[
+                    { id: 'nova', name: '🤖 Nova', desc: 'Futuristic Neural AI' },
+                    { id: 'jarvis', name: '⚡ Jarvis', desc: 'Sophisticated Male AI' },
+                    { id: 'aria', name: '🌟 Aria', desc: 'Smart Home Neural' },
+                    { id: 'echo', name: '🎙️ Echo', desc: 'Dynamic & Upbeat' },
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: voicePersona === p.id ? '1.5px solid var(--accent)' : '1px solid var(--line)',
+                        background: voicePersona === p.id ? 'rgba(99, 102, 241, 0.15)' : 'var(--panel-subtle)',
+                        color: 'var(--text)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s',
+                      }}
+                      onClick={() => {
+                        setVoicePersona(p.id)
+                        localStorage.setItem('aiota-voice-persona', p.id)
+                        speakReply(`Voice updated to ${p.name.replace(/[^a-zA-Z]/g, '')}. How can I assist you?`)
+                        setToastMsg(`AI Voice set to ${p.name}`)
+                      }}
+                    >
+                      <b style={{ display: 'block', fontSize: 12 }}>{p.name}</b>
+                      <small style={{ fontSize: 10, color: 'var(--muted)' }}>{p.desc}</small>
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: 10, fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>Engine:</span>
+                  <span style={{ color: 'var(--accent-light)', fontWeight: 600 }}>
+                    {(() => {
+                      const v = getPersonaVoice(
+                        voicePersona,
+                        voices.length > 0 ? voices : window.speechSynthesis?.getVoices?.() || []
+                      )
+                      return v ? `${v.name} (${v.lang})` : 'Neural High-Definition Audio'
+                    })()}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Hardware Nodes */}
