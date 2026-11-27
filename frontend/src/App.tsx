@@ -22,6 +22,7 @@ const sceneIconFor = (icon: string) =>
 export default function App() {
   const [tab, setTab] = useState<Tab>('home')
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('aiota-theme') as 'dark' | 'light') || 'dark')
+  const [liveBg, setLiveBg] = useState<boolean>(() => localStorage.getItem('aiota-live-bg') !== 'false')
   const [selectedRoomId, setSelectedRoomId] = useState<number>(1)
 
   const [rooms, setRooms] = useState<Room[]>([])
@@ -176,6 +177,10 @@ export default function App() {
     document.documentElement.dataset.theme = theme
     localStorage.setItem('aiota-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    localStorage.setItem('aiota-live-bg', String(liveBg))
+  }, [liveBg])
 
   const activeRoom = rooms.find((r) => r.id === selectedRoomId) || rooms[0]
   const activeRoomNode = nodes.find((n) => n.room_name?.toLowerCase() === activeRoom?.name?.toLowerCase())
@@ -605,7 +610,15 @@ export default function App() {
   }
 
   return (
-    <div className="mobile-app">
+    <div className={`mobile-app ${liveBg ? 'has-live-bg' : ''}`}>
+      {/* 3D Live Smart Home & Office Wallpaper */}
+      {liveBg && (
+        <div className="live-wallpaper-container">
+          <div className="live-wallpaper-img" style={{ backgroundImage: "url('/smart-home-bg.jpg')" }} />
+          <div className="live-wallpaper-overlay" />
+        </div>
+      )}
+
       {/* Top Header */}
       <header className="mobile-header">
         <div className="header-inner">
@@ -621,6 +634,18 @@ export default function App() {
               </div>
             </div>
             <div className="top-icons">
+              <button
+                className={`icon-pill-btn ${liveBg ? 'active' : ''}`}
+                title={liveBg ? '3D Live Wallpaper Active (Click to toggle)' : 'Enable 3D Live Wallpaper'}
+                onClick={() => {
+                  const next = !liveBg
+                  setLiveBg(next)
+                  setToastMsg(next ? '3D Live Background Enabled' : 'Standard Background Enabled')
+                  setTimeout(() => setToastMsg(''), 2500)
+                }}
+              >
+                <Layers size={17} color={liveBg ? 'var(--accent)' : 'inherit'} />
+              </button>
               <button className="icon-pill-btn" title="Toggle theme" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                 {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
               </button>
@@ -1079,6 +1104,38 @@ export default function App() {
           <div className="app-section">
             <div className="section-head-row">
               <h3>System Settings & Network</h3>
+            </div>
+
+            {/* 3D Live Background Wallpaper Setting */}
+            <h4 style={{ margin: '14px 0 8px', fontSize: 13, color: 'var(--muted)' }}>3D LIVE SMART HOME & OFFICE BACKGROUND</h4>
+            <div className="room-master-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <img
+                    src="/smart-home-bg.jpg"
+                    alt="3D Smart Home"
+                    style={{ width: 68, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--line)' }}
+                  />
+                  <div>
+                    <h4 style={{ fontSize: 13, margin: 0 }}>3D Live Architectural Interior</h4>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--muted)' }}>
+                      Subtle ambient live motion with luxury smart home and high-tech office lighting
+                    </p>
+                  </div>
+                </div>
+                <button
+                  className={`master-chip ${liveBg ? 'on' : 'off'}`}
+                  style={{ minWidth: 70 }}
+                  onClick={() => {
+                    const next = !liveBg
+                    setLiveBg(next)
+                    setToastMsg(next ? '3D Live Background Enabled' : 'Standard Background Enabled')
+                    setTimeout(() => setToastMsg(''), 2500)
+                  }}
+                >
+                  {liveBg ? 'ACTIVE' : 'OFF'}
+                </button>
+              </div>
             </div>
 
             {/* Wi-Fi Connection Manager */}
