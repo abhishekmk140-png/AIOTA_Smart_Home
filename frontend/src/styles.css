@@ -129,7 +129,29 @@ button {
 .brand-badge {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.brand-logo-img {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.brand-logo-img:hover {
+  transform: scale(1.04);
+}
+
+[data-theme='dark'] .brand-logo-img {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 4px 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='light'] .brand-logo-img {
+  padding: 2px 4px;
 }
 
 .brand-icon {

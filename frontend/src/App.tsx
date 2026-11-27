@@ -9,6 +9,7 @@ import {
 import { api, wsUrl, DEFAULT_REMOTE_BACKEND } from './api'
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
 import { LiveEnvironmentGraphs } from './LiveEnvironmentGraphs'
+import aiotaLogo from './assets/aiota-logo.png'
 
 type Tab = 'home' | 'automation' | 'energy' | 'security' | 'settings'
 
@@ -600,9 +601,11 @@ export default function App() {
         <div className="header-inner">
           <div className="mobile-top-bar">
             <div className="brand-badge">
-              <div className="brand-icon">
-                <Home size={19} />
-              </div>
+              <img
+                src={aiotaLogo}
+                alt="AIOTA Logo"
+                className="brand-logo-img"
+              />
               <div className="brand-text">
                 <b>AIOTA</b>
                 <span>SMART HOME</span>
