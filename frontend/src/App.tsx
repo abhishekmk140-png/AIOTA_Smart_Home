@@ -208,13 +208,23 @@ export default function App() {
   const filteredDevices = devices.filter((d) => d.room_id === selectedRoomId)
   const activeInRoom = activeRoom && activeRoom.devices ? activeRoom.devices.filter((d) => d.is_on).length : 0
 
-  const hr = new Date().getHours()
+  const [currentTime, setCurrentTime] = useState(new Date())
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const hr = currentTime.getHours()
   const greeting =
-    hr < 12
-      ? { title: 'Good morning', sub: 'Control and monitor your smart home' }
-      : hr < 17
-        ? { title: 'Good afternoon', sub: 'Control and monitor your smart home' }
-        : { title: 'Good evening', sub: 'Control and monitor your smart home' }
+    hr >= 5 && hr < 12
+      ? { title: 'Good morning', isNight: false, sub: 'Control and monitor your smart home' }
+      : hr >= 12 && hr < 17
+        ? { title: 'Good afternoon', isNight: false, sub: 'Control and monitor your smart home' }
+        : { title: 'Good evening', isNight: true, sub: 'Control and monitor your smart home' }
+
+  const dayName = currentTime.toLocaleDateString('en-US', { weekday: 'long' })
+  const dateStr = currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const timeStr = currentTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })
 
   function handleSelectTab(newTab: Tab) {
     setTab(newTab)
@@ -622,7 +632,19 @@ export default function App() {
 
           <div className="user-greeting">
             <div className="greeting-text">
-              <h2>{greeting.title}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h2>{greeting.title}</h2>
+                <span className={`greeting-icon ${greeting.isNight ? 'is-moon' : 'is-sun'}`}>
+                  {greeting.isNight ? <Moon size={20} /> : <Sun size={20} />}
+                </span>
+              </div>
+              <div className="greeting-datetime">
+                <span className="datetime-day">{dayName}</span>
+                <span className="datetime-sep">·</span>
+                <span className="datetime-date">{dateStr}</span>
+                <span className="datetime-sep">·</span>
+                <span className="datetime-time">{timeStr}</span>
+              </div>
               <p>{greeting.sub} · {activeCount} of {devices.length} appliances active</p>
             </div>
             <div className="node-pulse-badge">
