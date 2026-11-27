@@ -744,7 +744,7 @@ button {
   color: white;
 }
 
-/* Floating Joyful Bottom Navigation Dock - Moveable & Draggable */
+/* Floating Joyful Bottom Navigation Dock */
 .mobile-bottom-nav {
   position: fixed;
   bottom: 20px;
@@ -768,57 +768,6 @@ button {
               inset 0 1px 1px rgba(255, 255, 255, 0.15);
   animation: dock-float 4.2s ease-in-out infinite;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  touch-action: none;
-  user-select: none;
-}
-
-.mobile-bottom-nav.is-custom-pos {
-  animation: none !important;
-}
-
-.dock-drag-handle {
-  position: absolute;
-  top: -9px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 56px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  touch-action: none;
-  z-index: 10;
-}
-
-.dock-drag-bar {
-  width: 32px;
-  height: 4px;
-  border-radius: 4px;
-  background: rgba(148, 163, 184, 0.45);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  transition: all 0.2s ease;
-}
-
-.mobile-bottom-nav:hover .dock-drag-bar,
-.mobile-bottom-nav.is-dragging .dock-drag-bar {
-  background: var(--accent);
-  width: 42px;
-  height: 5px;
-  box-shadow: 0 0 10px var(--accent-light);
-}
-
-.mobile-bottom-nav.is-dragging {
-  cursor: grabbing !important;
-  transition: none !important;
-  animation: none !important;
-  opacity: 0.95;
-  box-shadow: 0 26px 54px -6px rgba(0, 0, 0, 0.65),
-              0 0 38px rgba(99, 102, 241, 0.45) !important;
-}
-
-.mobile-bottom-nav.is-dragging .nav-tab-btn {
-  pointer-events: none;
 }
 
 .mobile-bottom-nav:hover {
@@ -859,17 +808,6 @@ button {
   box-shadow: 0 16px 36px -6px rgba(99, 102, 241, 0.18),
               0 0 25px rgba(99, 102, 241, 0.15),
               inset 0 1px 1px rgba(255, 255, 255, 0.8);
-}
-
-:root[data-theme="light"] .dock-drag-bar {
-  background: rgba(100, 116, 139, 0.4);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-:root[data-theme="light"] .mobile-bottom-nav:hover .dock-drag-bar,
-:root[data-theme="light"] .mobile-bottom-nav.is-dragging .dock-drag-bar {
-  background: var(--accent);
-  box-shadow: 0 0 10px rgba(79, 70, 229, 0.4);
 }
 
 .nav-tab-btn {
