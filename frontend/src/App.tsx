@@ -607,8 +607,7 @@ export default function App() {
                 className="brand-logo-img"
               />
               <div className="brand-text">
-                <b>AIOTA</b>
-                <span>SMART HOME</span>
+                <span className="brand-smart-home">SMART HOME</span>
               </div>
             </div>
             <div className="top-icons">
