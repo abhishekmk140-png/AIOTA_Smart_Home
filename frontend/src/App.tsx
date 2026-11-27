@@ -756,49 +756,287 @@ export default function App() {
       const rawSaid = e.results[0][0].transcript || ''
       const said = normalizeVoiceText(rawSaid)
 
-      // 1. Navigation Commands ("open automates", "energy settings", "open settings", etc.)
+      // Action Detection (Turn On vs Turn Off)
+      const isTurnOff = /\b(turn off|switch off|power off|stop|disable|shut down|off|deactivate|close)\b/.test(said)
+      const isTurnOn = !isTurnOff && /\b(turn on|switch on|power on|start|enable|on|activate|open)\b/.test(said)
+
+      // 1. Human Chit-Chat & Polite Conversational Dialog
+      if (/\b(hello|hi|hey|howdy|hiya|good morning|good evening|good afternoon)\b/.test(said) && !said.includes('scene') && !isTurnOff && !isTurnOn) {
+        const timeGreeting = hr >= 5 && hr < 12 ? 'Good morning' : hr >= 12 && hr < 17 ? 'Good afternoon' : 'Good evening'
+        speakReply(`${timeGreeting}! I'm your AI smart home assistant, ready to help. What would you like to control or check?`)
+        setToastMsg(`AI: ${timeGreeting}! Ready to help`)
+        return
+      }
+
+      if (said.includes('how are you') || said.includes('how are things') || said.includes('how do you do') || said.includes("how's it going")) {
+        speakReply("I'm doing wonderful, thank you! All home systems, relays, and sensors are running smoothly. How can I help you today?")
+        setToastMsg("AI: All systems running smoothly!")
+        return
+      }
+
+      if (said.includes('who are you') || said.includes('what are you') || said.includes('what can you do') || said.includes('help me') || said === 'help') {
+        speakReply("I'm your AI smart home assistant! I can control your lights, fans, and appliances, switch rooms, activate scenes, arm security, check power and temperatures, change themes, and adjust settings. Just say the word!")
+        setToastMsg("AI: Ready to control lights, rooms, scenes & security")
+        return
+      }
+
+      if (said.includes('thank you') || said.includes('thanks') || said.includes('appreciate it')) {
+        speakReply("You're very welcome! Always happy to make your home comfortable and smart.")
+        setToastMsg("AI: You're very welcome!")
+        return
+      }
+
+      if (said.includes('joke') || said.includes('funny') || said.includes('laugh')) {
+        speakReply("Why did the light bulb fail its exam? Because it wasn't very bright! But don't worry, your smart lights here are pure genius.")
+        setToastMsg("AI: Smart lights are genius!")
+        return
+      }
+
+      if (said.includes('good night') || said.includes('going to sleep') || said.includes('bed time') || said.includes('sleep time')) {
+        const nightScene = scenes.find((s) => s.name.toLowerCase().includes('night') || s.name.toLowerCase().includes('sleep'))
+        if (nightScene) {
+          handleApplyScene(nightScene.id)
+          speakReply(`Good night! I've activated your ${nightScene.name} scene and armed the security system. Sleep well!`)
+        } else {
+          const lights = devices.filter((d) => d.kind === 'light')
+          lights.forEach((d) => { if (d.is_on) toggle(d, false) })
+          setIsArmed(true)
+          speakReply("Good night! I've powered off the lights and armed the security system. Sleep peacefully!")
+        }
+        setToastMsg("AI: Good night! Sleep well")
+        return
+      }
+
+      // 2. House Status & Summary
+      if (said.includes('house summary') || said.includes('home summary') || said.includes('status of the house') || said.includes('how is the house') || said.includes('system status') || said.includes('how is everything') || said.includes('give me an update') || said === 'status') {
+        const summaryText = `Here is your home update: ${activeCount} appliances are currently running, drawing ${Math.round(liveWatts)} watts. The temperature is ${displayTemp} degrees Celsius, humidity is ${displayHum} percent, and security is ${isArmed ? 'armed and monitoring' : 'currently disarmed'}. Everything looks fantastic!`
+        speakReply(summaryText)
+        setToastMsg(`AI: ${activeCount} active · ${Math.round(liveWatts)}W · ${displayTemp}°C`)
+        return
+      }
+
+      // 3. Sensor & Environmental Queries
+      if (said.includes('temperature') || said.includes('how hot') || said.includes('how cold') || said.includes('temp')) {
+        speakReply(`The current indoor temperature is ${displayTemp} degrees Celsius.`)
+        setToastMsg(`Voice: Temp is ${displayTemp}°C`)
+        return
+      }
+
+      if (said.includes('humidity') || said.includes('moisture') || said.includes('how humid')) {
+        speakReply(`The current indoor humidity is ${displayHum} percent.`)
+        setToastMsg(`Voice: Humidity is ${displayHum}%`)
+        return
+      }
+
+      if (said.includes('power') || said.includes('watts') || said.includes('wattage') || said.includes('consumption') || said.includes('electricity') || said.includes('energy use')) {
+        speakReply(`Your home is currently drawing ${Math.round(liveWatts)} watts. Today's total energy use is ${todayKwh.toFixed(2)} kilowatt hours, with an estimated monthly cost of ${estimatedCost} dollars.`)
+        setToastMsg(`Voice: Power is ${Math.round(liveWatts)}W (${todayKwh.toFixed(2)} kWh)`)
+        return
+      }
+
+      // 4. Security & PIR Motion Detection
+      if (said.includes('arm security') || said.includes('enable security') || (isTurnOn && said.includes('security')) || said.includes('lock down') || said.includes('secure the house')) {
+        setIsArmed(true)
+        speakReply("Security system is now fully armed. All perimeter and motion sensors are actively monitoring.")
+        setToastMsg("Voice: Security ARMED")
+        return
+      }
+
+      if (said.includes('disarm security') || said.includes('disable security') || (isTurnOff && said.includes('security')) || said.includes('disarm') || said.includes('stand down')) {
+        setIsArmed(false)
+        speakReply("Security system has been disarmed. Welcome home!")
+        setToastMsg("Voice: Security DISARMED")
+        return
+      }
+
+      if (said.includes('motion') || said.includes('anyone in the room') || said.includes('anyone home') || said.includes('is anyone there') || said.includes('occupied') || said.includes('occupancy')) {
+        const motionReply = isOccupied ? "Motion is currently detected in the room." : "The space is completely clear. No motion detected."
+        speakReply(motionReply)
+        setToastMsg(`Voice: ${isOccupied ? 'Motion Detected' : 'Space Clear'}`)
+        return
+      }
+
+      // 5. Themes & 3D Live Background
+      if (said.includes('dark mode') || said.includes('dark theme')) {
+        setTheme('dark')
+        speakReply("Switched over to sleek dark mode. Easy on the eyes!")
+        setToastMsg("Voice: Dark Mode enabled")
+        return
+      }
+
+      if (said.includes('light mode') || said.includes('light theme') || said.includes('day mode') || said.includes('white theme')) {
+        setTheme('light')
+        speakReply("Switched over to clean light mode. Crisp, bright, and clear!")
+        setToastMsg("Voice: Light Mode enabled")
+        return
+      }
+
+      if (said.includes('3d') || said.includes('live background') || said.includes('wallpaper')) {
+        if (isTurnOff || said.includes('hide') || said.includes('disable') || said.includes('remove')) {
+          setLiveBg(false)
+          speakReply("3D live background has been turned off.")
+          setToastMsg("Voice: 3D Live Background OFF")
+        } else {
+          setLiveBg(true)
+          speakReply("3D live interactive background is now active.")
+          setToastMsg("Voice: 3D Live Background ON")
+        }
+        return
+      }
+
+      // 6. Voice Persona Switching
+      if (said.includes('jarvis') || (said.includes('voice') && said.includes('male'))) {
+        setVoicePersona('jarvis')
+        localStorage.setItem('aiota-voice-persona', 'jarvis')
+        speakReply("Jarvis voice persona engaged. At your service, sir.")
+        setToastMsg("Voice Persona: Jarvis")
+        return
+      }
+
+      if (said.includes('aria')) {
+        setVoicePersona('aria')
+        localStorage.setItem('aiota-voice-persona', 'aria')
+        speakReply("Aria voice persona selected. Happy to assist you!")
+        setToastMsg("Voice Persona: Aria")
+        return
+      }
+
+      if (said.includes('echo')) {
+        setVoicePersona('echo')
+        localStorage.setItem('aiota-voice-persona', 'echo')
+        speakReply("Echo voice persona active. All systems ready.")
+        setToastMsg("Voice Persona: Echo")
+        return
+      }
+
+      if (said.includes('nova')) {
+        setVoicePersona('nova')
+        localStorage.setItem('aiota-voice-persona', 'nova')
+        speakReply("Nova voice persona online. Ready for your instructions!")
+        setToastMsg("Voice Persona: Nova")
+        return
+      }
+
+      // 7. Modals: Create Scene, Add Device, Add Rule, Room Management
+      if (said.includes('create scene') || said.includes('new scene') || said.includes('add scene') || said.includes('build scene') || said.includes('make scene')) {
+        openSceneModal()
+        speakReply("Opening the scene designer so you can customize a new automation scene.")
+        setToastMsg("Voice: Opened Scene Creator")
+        return
+      }
+
+      if (said.includes('configure room') || said.includes('manage room') || said.includes('add room') || said.includes('edit room')) {
+        setShowRoomConfig(true)
+        speakReply("Opening room configuration for you.")
+        setToastMsg("Voice: Opened Room Settings")
+        return
+      }
+
+      if (said.includes('add device') || said.includes('new device') || said.includes('new appliance') || said.includes('add appliance') || said.includes('register device')) {
+        openAddDevice()
+        speakReply("Opening the device setup window so you can register a new appliance.")
+        setToastMsg("Voice: Opened Device Setup")
+        return
+      }
+
+      if (said.includes('add rule') || said.includes('new rule') || said.includes('create rule') || said.includes('new automation')) {
+        setShowAddRule(true)
+        speakReply("Opening the automation rule designer.")
+        setToastMsg("Voice: Opened Rule Creator")
+        return
+      }
+
+      // 8. Scenes Activation
+      const matchedScene = scenes.find((s) => {
+        const sNorm = normalizeVoiceText(s.name)
+        return (
+          said.includes(sNorm) ||
+          (sNorm.includes('morning') && said.includes('morning')) ||
+          (sNorm.includes('movie') && said.includes('movie')) ||
+          (sNorm.includes('party') && said.includes('party')) ||
+          (sNorm.includes('night') && said.includes('night')) ||
+          (sNorm.includes('focus') && said.includes('focus')) ||
+          (sNorm.includes('off') && (said.includes('all off') || said.includes('leave')))
+        )
+      })
+
+      if (matchedScene && (said.includes('scene') || said.includes('activate') || said.includes('set') || said.includes('mode') || said.includes('apply') || said.includes('trigger'))) {
+        handleApplyScene(matchedScene.id)
+        speakReply(`Scene activated: ${matchedScene.name}! Everything is configured just how you like it.`)
+        setToastMsg(`Voice: Scene "${matchedScene.name}" active`)
+        return
+      }
+
+      // 9. Rooms Navigation & Room Master Controls
+      const matchedRoom = rooms.find((r) => {
+        const rNorm = normalizeVoiceText(r.name)
+        return said.includes(rNorm)
+      })
+
+      if (matchedRoom) {
+        // Master room on/off: "turn on living room", "turn off gallery", "turn everything on in living room"
+        if ((isTurnOff || isTurnOn) && (said.includes('all') || said.includes('everything') || !said.match(/\b(light|fan|ac|socket|relay|channel|[1-8])\b/))) {
+          handleToggleRoom(matchedRoom.id, isTurnOn)
+          const stateWord = isTurnOn ? 'on' : 'off'
+          speakReply(`Certainly! Turned ${stateWord} all appliances in the ${matchedRoom.name}.`)
+          setToastMsg(`Voice: ${matchedRoom.name} all ${stateWord.toUpperCase()}`)
+          return
+        }
+
+        // Room switching: "show living room", "go to gallery", "switch to bedroom"
+        if (said.includes('show') || said.includes('go to') || said.includes('switch to') || said.includes('view') || said.includes('open') || said.includes('room')) {
+          setSelectedRoomId(matchedRoom.id)
+          setTab('home')
+          const roomDevs = devices.filter((d) => d.room_id === matchedRoom.id)
+          speakReply(`Switched to the ${matchedRoom.name}. You have ${roomDevs.length} appliances available here.`)
+          setToastMsg(`Voice: Showing ${matchedRoom.name}`)
+          return
+        }
+      }
+
+      // 10. Navigation Commands (Automate, Energy, Security, Settings, Home)
       if (said.includes('automate') || said.includes('automation') || said.includes('rules')) {
         setTab('automation')
-        speakReply('Opening Automation.')
-        setToastMsg('Voice: Opened Automation')
+        speakReply("Right away! Opening your Automation hub.")
+        setToastMsg("Voice: Opened Automation")
         return
       }
-      if (said.includes('energy') || said.includes('power consumption') || said.includes('watts')) {
+
+      if (said.includes('energy') || said.includes('meter') || said.includes('power consumption')) {
         setTab('energy')
-        speakReply('Opening Energy settings.')
-        setToastMsg('Voice: Opened Energy')
+        speakReply("Taking you straight to Energy & Power analytics.")
+        setToastMsg("Voice: Opened Energy")
         return
       }
-      if (said.includes('setting') || said.includes('configure') || said.includes('wifi') || said.includes('nodes')) {
+
+      if (said.includes('setting') || said.includes('configure') || said.includes('wifi') || said.includes('hardware') || said.includes('esp32')) {
         setTab('settings')
-        speakReply('Opening Settings.')
-        setToastMsg('Voice: Opened Settings')
+        speakReply("Opening System Settings for you.")
+        setToastMsg("Voice: Opened Settings")
         return
       }
-      if (said.includes('security') || said.includes('cctv') || said.includes('alarm')) {
+
+      if (said.includes('security') || said.includes('cctv') || said.includes('alarm') || said.includes('camera')) {
         setTab('security')
-        speakReply('Opening Security dashboard.')
-        setToastMsg('Voice: Opened Security')
+        speakReply("Opening your Security monitoring center.")
+        setToastMsg("Voice: Opened Security")
         return
       }
-      if (said.includes('home') || said.includes('dashboard') || said.includes('main screen')) {
+
+      if (said.includes('home') || said.includes('dashboard') || said.includes('main screen') || said.includes('back to main')) {
         setTab('home')
-        speakReply('Opening Home dashboard.')
-        setToastMsg('Voice: Opened Home')
+        speakReply("Heading back to your Home dashboard.")
+        setToastMsg("Voice: Opened Home")
         return
       }
 
-      // 2. Action Detection (Turn On vs Turn Off)
-      const isTurnOff = /\b(turn off|switch off|power off|stop|disable|shut down|off)\b/.test(said)
-      const isTurnOn = !isTurnOff && /\b(turn on|switch on|power on|start|enable|on)\b/.test(said)
-
-      // 3. Master All Commands
+      // 11. Master All Commands ("turn on all", "turn off all", "everything on")
       if (said.includes('all on') || said.includes('turn on all') || said.includes('turn all on') || (isTurnOn && said.includes('everything'))) {
         devices.forEach((d) => {
           if (!d.is_on) toggle(d, true)
         })
-        speakReply('Turning on all appliances.')
-        setToastMsg('Voice: All appliances ON')
+        speakReply("Sure thing! Turning on all appliances across the house.")
+        setToastMsg("Voice: All appliances ON")
         return
       }
 
@@ -806,47 +1044,35 @@ export default function App() {
         devices.forEach((d) => {
           if (d.is_on) toggle(d, false)
         })
-        speakReply('Turning off all appliances.')
-        setToastMsg('Voice: All appliances OFF')
+        speakReply("Consider it done! Turning off all appliances.")
+        setToastMsg("Voice: All appliances OFF")
         return
       }
 
-      // 4. Batch by Kind ("all lights", "all fans")
-      if (said.includes('all lights') || said.includes('all light') || (isTurnOff && said === 'lights off') || (isTurnOn && said === 'lights on')) {
+      // 12. Batch by Kind ("all lights", "all fans")
+      if (said.includes('all lights') || said.includes('all light') || (isTurnOff && (said === 'lights off' || said === 'turn off lights')) || (isTurnOn && (said === 'lights on' || said === 'turn on lights'))) {
         const lightDevices = devices.filter((d) => d.kind === 'light')
         if (lightDevices.length > 0) {
           lightDevices.forEach((d) => toggle(d, !isTurnOff))
           const actionWord = isTurnOff ? 'off' : 'on'
-          speakReply(`Turning ${actionWord} all lights.`)
+          speakReply(`Right away! Turning ${actionWord} all lights in your home.`)
           setToastMsg(`Voice: All lights ${actionWord.toUpperCase()}`)
           return
         }
       }
 
-      if (said.includes('all fans') || said.includes('all fan') || (isTurnOff && said === 'fans off') || (isTurnOn && said === 'fans on')) {
+      if (said.includes('all fans') || said.includes('all fan') || (isTurnOff && (said === 'fans off' || said === 'turn off fans')) || (isTurnOn && (said === 'fans on' || said === 'turn on fans'))) {
         const fanDevices = devices.filter((d) => d.kind === 'fan')
         if (fanDevices.length > 0) {
           fanDevices.forEach((d) => toggle(d, !isTurnOff))
           const actionWord = isTurnOff ? 'off' : 'on'
-          speakReply(`Turning ${actionWord} all fans.`)
+          speakReply(`You got it! Turning ${actionWord} all fans.`)
           setToastMsg(`Voice: All fans ${actionWord.toUpperCase()}`)
           return
         }
       }
 
-      // 5. Environmental Queries ("what is the temperature", "humidity")
-      if (said.includes('temperature') || said.includes('how hot') || said.includes('temp')) {
-        speakReply(`The current temperature is ${displayTemp} degrees Celsius.`)
-        setToastMsg(`Voice: Temp is ${displayTemp}°C`)
-        return
-      }
-      if (said.includes('humidity') || said.includes('moisture')) {
-        speakReply(`The current humidity is ${displayHum} percent.`)
-        setToastMsg(`Voice: Humidity is ${displayHum}%`)
-        return
-      }
-
-      // 6. Targeted Particular Device Matching
+      // 13. Targeted Particular Device Matching
       let targetDevice: Device | null = null
 
       // Check number mentioned in utterance (e.g. "light 1", "fan 2", "relay 3", "channel 4")
@@ -894,31 +1120,31 @@ export default function App() {
         }
       }
 
-      // 7. Execute Target Device Command
+      // Execute Target Device Command
       if (targetDevice) {
         const targetState = isTurnOff ? false : isTurnOn ? true : !targetDevice.is_on
         const actionWord = targetState ? 'on' : 'off'
 
         if (isTurnOn && targetDevice.is_on) {
-          speakReply(`${targetDevice.name} is already on.`)
+          speakReply(`${targetDevice.name} is already turned on.`)
           setToastMsg(`Voice: ${targetDevice.name} is already ON`)
           return
         }
         if (isTurnOff && !targetDevice.is_on) {
-          speakReply(`${targetDevice.name} is already off.`)
+          speakReply(`${targetDevice.name} is already switched off.`)
           setToastMsg(`Voice: ${targetDevice.name} is already OFF`)
           return
         }
 
         toggle(targetDevice, targetState)
-        speakReply(`Turning ${actionWord} ${targetDevice.name}.`)
+        speakReply(`Certainly! Turning ${actionWord} ${targetDevice.name} for you.`)
         setToastMsg(`Voice: ${targetDevice.name} turned ${actionWord.toUpperCase()}`)
         return
       }
 
-      // Fallback
-      speakReply(`I heard "${rawSaid}", but could not find that device or screen.`)
-      setError(`Heard: "${rawSaid}". Try "Turn on Light 1" or "Open Automate"`)
+      // 14. Friendly Human Fallback
+      speakReply(`I heard you say: "${rawSaid}". I wasn't quite sure how to handle that, but you can ask me to control devices, switch rooms, activate scenes, or check power and temperatures!`)
+      setError(`Heard: "${rawSaid}". Try "Turn on Light 1", "Show Living Room", or "House summary"`)
     }
     rec.start()
   }
@@ -1752,7 +1978,7 @@ export default function App() {
                     </span>
                   </h4>
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--muted)' }}>
-                    Speak commands like "Turn on Light 1", "Turn off Fan", "Open Automate", or "Energy settings"
+                    Talk naturally: "Turn on Light 1", "Show Living Room", "Good Morning", "Arm security", or "House summary"
                   </p>
                 </div>
                 <button
