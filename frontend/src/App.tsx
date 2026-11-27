@@ -737,22 +737,22 @@ export default function App() {
             </div>
 
             {/* Live PIR Motion Sensor Bar (Near Below Temperature) */}
-            <div style={{ padding: '0 20px 12px' }}>
+            <div style={{ padding: '0 20px 8px' }}>
               <div className={`pir-motion-banner ${isOccupied ? 'occupied' : 'vacant'}`}>
                 <div className="pir-banner-left">
                   <div className="pir-icon-box">
-                    {isOccupied ? <Users size={18} /> : <UserCheck size={18} />}
+                    {isOccupied ? <Users size={16} /> : <UserCheck size={16} />}
                   </div>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span className="pir-banner-title">PIR SENSOR READING</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span className="pir-banner-title">PIR MOTION</span>
                       <span className={`pir-status-chip ${isOccupied ? 'chip-occupied' : 'chip-vacant'}`}>
                         <span className="pir-pulse-dot" />
-                        {isOccupied ? 'Occupied' : 'Not Occupied'}
+                        {isOccupied ? 'Occupied' : 'Clear'}
                       </span>
                       <button
                         className="master-chip"
-                        style={{ fontSize: 10, padding: '2px 8px', height: 'auto', borderRadius: 6, cursor: 'pointer' }}
+                        style={{ fontSize: 9, padding: '1px 6px', height: 'auto', borderRadius: 5, cursor: 'pointer' }}
                         onClick={() => {
                           const nv = !pirInverted
                           setPirInverted(nv)
@@ -760,64 +760,19 @@ export default function App() {
                           setToastMsg(`PIR logic set to ${nv ? 'Active-LOW (Inverted)' : 'Active-HIGH (Standard)'}`)
                         }}
                       >
-                        {pirInverted ? 'Mode: Inverted' : 'Mode: Standard'}
+                        {pirInverted ? 'Inverted' : 'Standard'}
                       </button>
                     </div>
                     <span className="pir-banner-sub">
                       {isOccupied
-                        ? 'Motion actively detected · Space is currently occupied'
-                        : 'No motion detected · Space is clear (not occupied)'}
+                        ? 'Motion actively detected · Space occupied'
+                        : 'No motion detected · Space is clear'}
                     </span>
                   </div>
                 </div>
                 <div className="pir-banner-right">
-                  <span className="pir-node-tag">Header H1 Pin 15 · GPIO 4</span>
+                  <span className="pir-node-tag">GPIO 4</span>
                 </div>
-              </div>
-            </div>
-
-            {/* Quick Scenes with Configure Button */}
-            <div className="app-section">
-              <div className="section-head-row">
-                <h3>Quick Scenes</h3>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button className="section-action-link" onClick={() => openSceneModal()}>
-                    + New Scene
-                  </button>
-                </div>
-              </div>
-              <div className="scenes-scroll">
-                {scenes.map((s) => {
-                  const SIcon = sceneIconFor(s.icon)
-                  return (
-                    <div key={s.id} className="mobile-scene-card">
-                      <div className="scene-card-top">
-                        <div className="scene-icon-bubble">
-                          <SIcon size={16} />
-                        </div>
-                        <button
-                          className="icon-pill-btn"
-                          style={{ width: 26, height: 26 }}
-                          title="Configure scene rooms & actions"
-                          onClick={() => openSceneModal(s)}
-                        >
-                          <Sliders size={12} />
-                        </button>
-                      </div>
-                      <div onClick={() => handleApplyScene(s.id)} style={{ cursor: 'pointer' }}>
-                        <b>{s.name}</b>
-                        <span>{s.actions.length} channels configured</span>
-                      </div>
-                      <button
-                        className="master-chip on"
-                        style={{ marginTop: 8, width: '100%', padding: '5px 0' }}
-                        onClick={() => handleApplyScene(s.id)}
-                      >
-                        ACTIVATE
-                      </button>
-                    </div>
-                  )
-                })}
               </div>
             </div>
 
@@ -844,18 +799,18 @@ export default function App() {
 
             {/* Room Master Switch */}
             {activeRoom && (
-              <div style={{ padding: '0 20px 8px' }}>
+              <div style={{ padding: '0 20px 6px' }}>
                 <div className="room-master-card">
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <h4 style={{ margin: 0 }}>{activeRoom.name}</h4>
                       {activeInRoom > 0 && (
-                        <span className="node-pulse-badge" style={{ fontSize: 11, padding: '2px 8px' }}>
+                        <span className="node-pulse-badge" style={{ fontSize: 10, padding: '2px 7px' }}>
                           {activeInRoom} Active
                         </span>
                       )}
                     </div>
-                    <p style={{ margin: '4px 0 0' }}>{activeRoom.devices.length} channels configured</p>
+                    <p style={{ margin: '3px 0 0' }}>{activeRoom.devices.length} channels configured</p>
                   </div>
                   <div className="master-switch-btns">
                     <button className="master-chip on" onClick={() => handleToggleRoom(activeRoom.id, true)}>
@@ -872,7 +827,7 @@ export default function App() {
             {/* Native Responsive Device Grid (Fullscreen Laptop / 2-Col Mobile) */}
             <div className="app-section">
               <div className="section-head-row">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0 }}>Appliances ({filteredDevices.length})</h3>
                   <button
                     onClick={() => setTab('settings')}
@@ -880,19 +835,19 @@ export default function App() {
                       background: 'rgba(99, 102, 241, 0.12)',
                       border: '1px solid rgba(99, 102, 241, 0.25)',
                       color: 'var(--accent)',
-                      borderRadius: 14,
-                      padding: '3px 10px',
-                      fontSize: 11,
+                      borderRadius: 12,
+                      padding: '2px 8px',
+                      fontSize: 10,
                       fontWeight: 600,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 5,
+                      gap: 4,
                     }}
                     title="Click to view or set physical ESP32 IP address in Settings"
                   >
-                    <Cpu size={12} />
-                    ESP32 IP: {devices[0]?.ip_address || 'Not Set'}
+                    <Cpu size={11} />
+                    ESP32: {devices[0]?.ip_address || 'Not Set'}
                   </button>
                 </div>
                 <button className="section-action-link" onClick={() => openAddDevice()}>
@@ -915,18 +870,17 @@ export default function App() {
                     >
                       <div className="tile-top">
                         <div className="tile-icon-bubble">
-                          <Icon size={20} />
+                          <Icon size={18} />
                         </div>
                         <button
-                          className="icon-pill-btn"
-                          style={{ width: 28, height: 28 }}
+                          className="icon-pill-btn tile-edit-btn"
                           title="Edit appliance settings"
                           onClick={(e) => {
                             e.stopPropagation()
                             openEditDevice(d)
                           }}
                         >
-                          <Edit2 size={12} />
+                          <Edit2 size={11} />
                         </button>
                       </div>
 
@@ -943,7 +897,7 @@ export default function App() {
                           return (
                             <span>
                               CH{d.channel}
-                              {sameChannelPeers.length > 0 ? ` · Synced with ${sameChannelPeers.map((p) => p.name).join(', ')}` : ''}
+                              {sameChannelPeers.length > 0 ? ' · Synced' : ''}
                               {' · '}{WATTAGE[d.kind] || 30}W
                             </span>
                           )
@@ -956,6 +910,51 @@ export default function App() {
                           <span />
                         </div>
                       </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Quick Scenes with Configure Button */}
+            <div className="app-section" style={{ paddingTop: 0 }}>
+              <div className="section-head-row">
+                <h3 style={{ margin: 0 }}>Quick Scenes</h3>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button className="section-action-link" onClick={() => openSceneModal()}>
+                    + New Scene
+                  </button>
+                </div>
+              </div>
+              <div className="scenes-scroll">
+                {scenes.map((s) => {
+                  const SIcon = sceneIconFor(s.icon)
+                  return (
+                    <div key={s.id} className="mobile-scene-card">
+                      <div className="scene-card-top">
+                        <div className="scene-icon-bubble">
+                          <SIcon size={16} />
+                        </div>
+                        <button
+                          className="icon-pill-btn"
+                          style={{ width: 24, height: 24 }}
+                          title="Configure scene rooms & actions"
+                          onClick={() => openSceneModal(s)}
+                        >
+                          <Sliders size={11} />
+                        </button>
+                      </div>
+                      <div onClick={() => handleApplyScene(s.id)} style={{ cursor: 'pointer' }}>
+                        <b>{s.name}</b>
+                        <span>{s.actions.length} channels configured</span>
+                      </div>
+                      <button
+                        className="master-chip on"
+                        style={{ marginTop: 6, width: '100%', padding: '4px 0', fontSize: 11 }}
+                        onClick={() => handleApplyScene(s.id)}
+                      >
+                        ACTIVATE
+                      </button>
                     </div>
                   )
                 })}
