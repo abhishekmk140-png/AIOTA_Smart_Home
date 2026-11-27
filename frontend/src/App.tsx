@@ -9,6 +9,7 @@ import {
 import { api, wsUrl, DEFAULT_REMOTE_BACKEND } from './api'
 import type { Room, Device, Telemetry, Activity, AutomationRule, Scene, NodeStatus } from './types'
 import { LiveEnvironmentGraphs } from './LiveEnvironmentGraphs'
+import { Live3DHomeBackground } from './Live3DHomeBackground'
 import aiotaLogo from './assets/aiota-logo.png'
 
 type Tab = 'home' | 'automation' | 'energy' | 'security' | 'settings'
@@ -612,9 +613,10 @@ export default function App() {
   return (
     <div className={`mobile-app ${liveBg ? 'has-live-bg' : ''}`}>
       {/* 3D Live Smart Home & Office Wallpaper */}
+      {/* Real-Time Interactive 3D WebGL Smart Home & Office Environment */}
       {liveBg && (
         <div className="live-wallpaper-container">
-          <div className="live-wallpaper-img" style={{ backgroundImage: "url('/smart-home-bg.jpg')" }} />
+          <Live3DHomeBackground theme={theme} />
           <div className="live-wallpaper-overlay" />
         </div>
       )}
@@ -1107,19 +1109,17 @@ export default function App() {
             </div>
 
             {/* 3D Live Background Wallpaper Setting */}
-            <h4 style={{ margin: '14px 0 8px', fontSize: 13, color: 'var(--muted)' }}>3D LIVE SMART HOME & OFFICE BACKGROUND</h4>
+            <h4 style={{ margin: '14px 0 8px', fontSize: 13, color: 'var(--muted)' }}>3D LIVE SMART HOME & OFFICE ENVIRONMENT</h4>
             <div className="room-master-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <img
-                    src="/smart-home-bg.jpg"
-                    alt="3D Smart Home"
-                    style={{ width: 68, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--line)' }}
-                  />
+                  <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #06b6d4)', display: 'grid', placeItems: 'center', color: '#fff', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+                    <Layers size={22} />
+                  </div>
                   <div>
-                    <h4 style={{ fontSize: 13, margin: 0 }}>3D Live Architectural Interior</h4>
+                    <h4 style={{ fontSize: 13, margin: 0 }}>Real-Time 3D Interactive WebGL Room</h4>
                     <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--muted)' }}>
-                      Subtle ambient live motion with luxury smart home and high-tech office lighting
+                      Interactive 3D smart home & office with responsive mouse/touch orbit, glowing IoT lighting & ambient motion
                     </p>
                   </div>
                 </div>
@@ -1129,7 +1129,7 @@ export default function App() {
                   onClick={() => {
                     const next = !liveBg
                     setLiveBg(next)
-                    setToastMsg(next ? '3D Live Background Enabled' : 'Standard Background Enabled')
+                    setToastMsg(next ? '3D Live WebGL Background Enabled' : 'Standard Background Enabled')
                     setTimeout(() => setToastMsg(''), 2500)
                   }}
                 >

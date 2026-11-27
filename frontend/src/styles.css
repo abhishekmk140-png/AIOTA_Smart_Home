@@ -1205,11 +1205,12 @@ button {
 .live-wallpaper-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 15%, rgba(15, 23, 42, 0.45) 0%, rgba(11, 15, 25, 0.88) 100%);
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 30%, rgba(15, 23, 42, 0.25) 0%, rgba(11, 15, 25, 0.75) 100%);
 }
 
 [data-theme='light'] .live-wallpaper-overlay {
-  background: radial-gradient(circle at 50% 15%, rgba(248, 250, 252, 0.6) 0%, rgba(241, 245, 249, 0.88) 100%);
+  background: radial-gradient(circle at 50% 30%, rgba(248, 250, 252, 0.3) 0%, rgba(241, 245, 249, 0.72) 100%);
 }
 
 /* Glassmorphism over 3D wallpaper */
