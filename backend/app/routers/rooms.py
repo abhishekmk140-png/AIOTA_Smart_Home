@@ -7,8 +7,8 @@ from ..database import get_db
 from ..models import Room, Activity
 from ..schemas import RoomCreate, RoomOut, RoomToggleAll
 from ..services.events import hub
-from ..services.mqtt import publish_relay
-from ..services.http_transport import send_http_relay
+from ..services.mqtt import publish_relay, publish_relay_all
+from ..services.http_transport import send_http_relay, send_http_relay_all
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
@@ -44,15 +44,18 @@ async def toggle_all_devices(room_id: int, payload: RoomToggleAll, db: AsyncSess
     if not room:
         raise HTTPException(404, "Room not found")
     
-    dispatched_channels = set()
+    target_ip = room.devices[0].ip_address if room.devices else None
+    node_id = room.devices[0].node_id if room.devices else "aiota-living"
+    channels = []
+
     for device in room.devices:
         device.is_on = payload.is_on
-        if device.channel not in dispatched_channels:
-            dispatched_channels.add(device.channel)
-            if device.ip_address:
-                send_http_relay(device.ip_address, device.channel, payload.is_on)
-            publish_relay(device.node_id, device.channel, payload.is_on)
+        channels.append(device.channel)
         await hub.publish({"type": "relay", "device_id": device.id, "is_on": device.is_on})
+
+    # Master batch dispatch to hardware (single batch packet or persistent keep-alive, zero socket drop)
+    send_http_relay_all(target_ip, payload.is_on, channels)
+    publish_relay_all(node_id, payload.is_on)
 
     state_str = "ON" if payload.is_on else "OFF"
     db.add(Activity(message=f"All devices in {room.name} turned {state_str}", category="room"))

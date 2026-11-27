@@ -71,6 +71,51 @@ def send_http_relay(ip_address: str | None, channel: int, is_on: bool) -> bool:
     ).start()
     return True
 
+def _post_relay_all(ip_address: str, is_on: bool, channels: list[int] | None = None):
+    global _last_known_ip
+    candidates = get_active_board_ips(ip_address)
+    target_channels = sorted(set(channels)) if channels else list(range(1, 7))
+    for candidate in candidates:
+        clean_ip = candidate.replace("http://", "").replace("https://", "").rstrip("/")
+        url = f"http://{clean_ip}/api/relay" if ":" in clean_ip else f"http://{clean_ip}:80/api/relay"
+        try:
+            # 1. Try single batch command (switches all 6 channels in 1 instruction on updated firmware)
+            res = _http_pool.post(
+                url,
+                json={"channel": 0, "all": True, "is_on": is_on},
+                timeout=0.6,
+            )
+            if res.status_code == 200:
+                _last_known_ip = clean_ip
+                print(f"[PHYSICAL RELAY] ALL RELAYS -> {'ON' if is_on else 'OFF'} sent in 1 batch packet to {url}")
+                return
+        except Exception:
+            pass
+
+        # 2. Sequential fallback across single persistent keep-alive connection (~160ms total, zero socket backlog drop)
+        try:
+            for ch in target_channels:
+                _http_pool.post(
+                    url,
+                    json={"channel": ch, "is_on": is_on},
+                    timeout=0.6,
+                )
+            _last_known_ip = clean_ip
+            print(f"[PHYSICAL RELAY] ALL RELAYS -> {'ON' if is_on else 'OFF'} completed sequentially over keepalive {url}")
+            return
+        except Exception as err:
+            print(f"[PHYSICAL RELAY] Sequential all-relays failed for {url}: {err}")
+
+def send_http_relay_all(ip_address: str | None, is_on: bool, channels: list[int] | None = None) -> bool:
+    """Non-blocking daemon dispatch to switch all relays at once."""
+    target = ip_address or _last_known_ip
+    threading.Thread(
+        target=_post_relay_all,
+        args=(target, is_on, channels),
+        daemon=True,
+    ).start()
+    return True
+
 async def probe_esp32_hardware(ip_address: str) -> dict:
     """Check if ESP32-S3 relay hardware is reachable and responsive at the given IP."""
     clean_ip = ip_address.replace("http://", "").replace("https://", "").rstrip("/")

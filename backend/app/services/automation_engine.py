@@ -3,8 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import AutomationRule, Device, Activity
 from .events import hub
-from .mqtt import publish_relay
-from .http_transport import send_http_relay
+from .mqtt import publish_relay, publish_relay_all
+from .http_transport import send_http_relay, send_http_relay_all
 
 def utcnow():
     return datetime.now(timezone.utc)
@@ -78,17 +78,30 @@ async def execute_scene(db: AsyncSession, scene_id: int):
         return None
 
     applied_count = 0
-    for action in scene.actions:
-        device_id = action.get("device_id")
-        target_state = action.get("is_on", False)
-        device = await db.get(Device, device_id)
-        if device:
-            device.is_on = target_state
-            publish_relay(device.node_id, device.channel, target_state)
-            if device.ip_address:
-                await send_http_relay(device.ip_address, device.channel, target_state)
-            await hub.publish({"type": "relay", "device_id": device.id, "is_on": device.is_on})
-            applied_count += 1
+    states = {a.get("is_on") for a in scene.actions}
+    all_same_state = (len(states) == 1)
+
+    if all_same_state and len(scene.actions) >= 3:
+        target_state = list(states)[0]
+        send_http_relay_all(None, target_state)
+        publish_relay_all("aiota-living", target_state)
+        for action in scene.actions:
+            device = await db.get(Device, action.get("device_id"))
+            if device:
+                device.is_on = target_state
+                await hub.publish({"type": "relay", "device_id": device.id, "is_on": device.is_on})
+                applied_count += 1
+    else:
+        for action in scene.actions:
+            device_id = action.get("device_id")
+            target_state = action.get("is_on", False)
+            device = await db.get(Device, device_id)
+            if device:
+                device.is_on = target_state
+                publish_relay(device.node_id, device.channel, target_state)
+                send_http_relay(device.ip_address, device.channel, target_state)
+                await hub.publish({"type": "relay", "device_id": device.id, "is_on": device.is_on})
+                applied_count += 1
 
     msg = f"Scene '{scene.name}' activated ({applied_count} devices updated)"
     db.add(Activity(message=msg, category="scene"))

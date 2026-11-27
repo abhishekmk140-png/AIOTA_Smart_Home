@@ -191,6 +191,16 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     isOn = doc["value"].as<int>() > 0;
   }
 
+  bool isAll = (channel == 0 || (doc.containsKey("all") && doc["all"].as<bool>()));
+  if (isAll) {
+    for (int i = 1; i <= 6; i++) {
+      setRelay(i, isOn);
+    }
+    publishState();
+    Serial.printf("[MQTT] ALL 6 Relays updated via MQTT: -> %s\n", isOn ? "ON" : "OFF");
+    return;
+  }
+
   if (channel >= 1 && channel <= 6) {
     setRelay(channel, isOn);
     publishState();
@@ -281,7 +291,19 @@ void handleHttpRelay() {
     return;
   }
   int channel = doc["channel"] | 0;
+  bool isAll = (channel == 0 || (doc.containsKey("all") && doc["all"].as<bool>()));
   bool isOn = doc["is_on"] | false;
+
+  if (isAll) {
+    for (int i = 1; i <= 6; i++) {
+      setRelay(i, isOn);
+    }
+    localServer.send(200, "application/json", "{\"ok\":true,\"all\":true}");
+    Serial.printf("[HTTP] ALL 6 Relays switched to %s\n", isOn ? "ON" : "OFF");
+    publishState();
+    return;
+  }
+
   if (channel < 1 || channel > 6) {
     localServer.send(400, "application/json", "{\"error\":\"channel must be 1..6\"}");
     return;
