@@ -747,12 +747,12 @@ button {
 /* Floating Joyful Bottom Navigation Dock */
 .mobile-bottom-nav {
   position: fixed;
-  bottom: 20px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 36px);
   max-width: 560px;
-  height: 68px;
+  height: 60px;
   background: linear-gradient(135deg, rgba(17, 24, 43, 0.88) 0%, rgba(10, 15, 30, 0.94) 100%);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -767,7 +767,7 @@ button {
               0 0 25px rgba(99, 102, 241, 0.2),
               inset 0 1px 1px rgba(255, 255, 255, 0.15);
   animation: dock-float 4.2s ease-in-out infinite;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .mobile-bottom-nav:hover {
@@ -780,25 +780,25 @@ button {
 @keyframes dock-float {
   0%, 100% {
     transform: translateX(-50%) translateY(0);
-    box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.55),
-                0 0 25px rgba(99, 102, 241, 0.2),
+    box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(99, 102, 241, 0.18),
                 inset 0 1px 1px rgba(255, 255, 255, 0.15);
   }
   50% {
-    transform: translateX(-50%) translateY(-6px);
-    box-shadow: 0 24px 44px -6px rgba(0, 0, 0, 0.62),
-                0 0 38px rgba(99, 102, 241, 0.35),
-                inset 0 1px 1px rgba(255, 255, 255, 0.22);
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 16px 34px -6px rgba(0, 0, 0, 0.58),
+                0 0 28px rgba(99, 102, 241, 0.25),
+                inset 0 1px 1px rgba(255, 255, 255, 0.2);
   }
 }
 
 @media (max-width: 600px) {
   .mobile-bottom-nav {
-    bottom: calc(14px + var(--safe-bottom));
+    bottom: calc(5px + var(--safe-bottom));
     width: calc(100% - 24px);
     max-width: 480px;
-    height: 64px;
-    border-radius: 34px;
+    height: 56px;
+    border-radius: 30px;
   }
 }
 
