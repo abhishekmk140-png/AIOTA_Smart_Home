@@ -237,8 +237,8 @@ export default function App() {
   }
 
   // 1. Instant Optimistic Toggle (0ms visual latency) - Synced per room node
-  async function toggle(d: Device) {
-    const nextState = !d.is_on
+  async function toggle(d: Device, explicitState?: boolean) {
+    const nextState = explicitState !== undefined ? explicitState : !d.is_on
     const normName = d.name.trim().toLowerCase()
 
     // Find all appliances sharing the exact same channel OR name in this particular room node
@@ -587,25 +587,231 @@ export default function App() {
     }, 1500)
   }
 
+  // Natural Speech-to-Text & Text-to-Speech Assistant
+  function speakReply(text: string) {
+    if (!('speechSynthesis' in window)) return
+    try {
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(text)
+      u.rate = 1.02
+      u.pitch = 1.0
+      const voices = window.speechSynthesis.getVoices()
+      const preferred =
+        voices.find(
+          (v) =>
+            v.lang.startsWith('en') &&
+            (v.name.includes('Natural') ||
+              v.name.includes('Google') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Daniel') ||
+              v.default)
+        ) || voices.find((v) => v.lang.startsWith('en'))
+      if (preferred) u.voice = preferred
+      window.speechSynthesis.speak(u)
+    } catch (err) {
+      console.warn('Speech synthesis error:', err)
+    }
+  }
+
+  function normalizeVoiceText(t: string): string {
+    return t
+      .toLowerCase()
+      .replace(/\bone\b/g, '1')
+      .replace(/\btwo\b/g, '2')
+      .replace(/\bthree\b/g, '3')
+      .replace(/\bfour\b/g, '4')
+      .replace(/\bfive\b/g, '5')
+      .replace(/\bsix\b/g, '6')
+      .replace(/\bseven\b/g, '7')
+      .replace(/\beight\b/g, '8')
+      .trim()
+  }
+
   function voice() {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) {
       setError('Voice control not supported on this browser')
+      speakReply('Voice control is not supported on this browser.')
       return
     }
     const rec = new SR()
     rec.lang = 'en-US'
-    rec.onstart = () => setListening(true)
+    rec.onstart = () => {
+      setListening(true)
+      setToastMsg('🎙️ Listening for command…')
+    }
     rec.onend = () => setListening(false)
+    rec.onerror = (e: any) => {
+      setListening(false)
+      console.warn('Speech recognition error:', e)
+    }
     rec.onresult = (e: any) => {
-      const said = e.results[0][0].transcript.toLowerCase()
-      const d = devices.find((x) => said.includes(x.name.toLowerCase()))
-      if (d) {
-        toggle(d)
-        setToastMsg(`Voice: toggled ${d.name}`)
-      } else {
-        setError(`Heard: "${said}". Try saying device name like "Light" or "Fan"`)
+      const rawSaid = e.results[0][0].transcript || ''
+      const said = normalizeVoiceText(rawSaid)
+
+      // 1. Navigation Commands ("open automates", "energy settings", "open settings", etc.)
+      if (said.includes('automate') || said.includes('automation') || said.includes('rules')) {
+        setTab('automation')
+        speakReply('Opening Automation.')
+        setToastMsg('Voice: Opened Automation')
+        return
       }
+      if (said.includes('energy') || said.includes('power consumption') || said.includes('watts')) {
+        setTab('energy')
+        speakReply('Opening Energy settings.')
+        setToastMsg('Voice: Opened Energy')
+        return
+      }
+      if (said.includes('setting') || said.includes('configure') || said.includes('wifi') || said.includes('nodes')) {
+        setTab('settings')
+        speakReply('Opening Settings.')
+        setToastMsg('Voice: Opened Settings')
+        return
+      }
+      if (said.includes('security') || said.includes('cctv') || said.includes('alarm')) {
+        setTab('security')
+        speakReply('Opening Security dashboard.')
+        setToastMsg('Voice: Opened Security')
+        return
+      }
+      if (said.includes('home') || said.includes('dashboard') || said.includes('main screen')) {
+        setTab('home')
+        speakReply('Opening Home dashboard.')
+        setToastMsg('Voice: Opened Home')
+        return
+      }
+
+      // 2. Action Detection (Turn On vs Turn Off)
+      const isTurnOff = /\b(turn off|switch off|power off|stop|disable|shut down|off)\b/.test(said)
+      const isTurnOn = !isTurnOff && /\b(turn on|switch on|power on|start|enable|on)\b/.test(said)
+
+      // 3. Master All Commands
+      if (said.includes('all on') || said.includes('turn on all') || said.includes('turn all on') || (isTurnOn && said.includes('everything'))) {
+        devices.forEach((d) => {
+          if (!d.is_on) toggle(d, true)
+        })
+        speakReply('Turning on all appliances.')
+        setToastMsg('Voice: All appliances ON')
+        return
+      }
+
+      if (said.includes('all off') || said.includes('turn off all') || said.includes('turn all off') || (isTurnOff && said.includes('everything'))) {
+        devices.forEach((d) => {
+          if (d.is_on) toggle(d, false)
+        })
+        speakReply('Turning off all appliances.')
+        setToastMsg('Voice: All appliances OFF')
+        return
+      }
+
+      // 4. Batch by Kind ("all lights", "all fans")
+      if (said.includes('all lights') || said.includes('all light') || (isTurnOff && said === 'lights off') || (isTurnOn && said === 'lights on')) {
+        const lightDevices = devices.filter((d) => d.kind === 'light')
+        if (lightDevices.length > 0) {
+          lightDevices.forEach((d) => toggle(d, !isTurnOff))
+          const actionWord = isTurnOff ? 'off' : 'on'
+          speakReply(`Turning ${actionWord} all lights.`)
+          setToastMsg(`Voice: All lights ${actionWord.toUpperCase()}`)
+          return
+        }
+      }
+
+      if (said.includes('all fans') || said.includes('all fan') || (isTurnOff && said === 'fans off') || (isTurnOn && said === 'fans on')) {
+        const fanDevices = devices.filter((d) => d.kind === 'fan')
+        if (fanDevices.length > 0) {
+          fanDevices.forEach((d) => toggle(d, !isTurnOff))
+          const actionWord = isTurnOff ? 'off' : 'on'
+          speakReply(`Turning ${actionWord} all fans.`)
+          setToastMsg(`Voice: All fans ${actionWord.toUpperCase()}`)
+          return
+        }
+      }
+
+      // 5. Environmental Queries ("what is the temperature", "humidity")
+      if (said.includes('temperature') || said.includes('how hot') || said.includes('temp')) {
+        speakReply(`The current temperature is ${displayTemp} degrees Celsius.`)
+        setToastMsg(`Voice: Temp is ${displayTemp}°C`)
+        return
+      }
+      if (said.includes('humidity') || said.includes('moisture')) {
+        speakReply(`The current humidity is ${displayHum} percent.`)
+        setToastMsg(`Voice: Humidity is ${displayHum}%`)
+        return
+      }
+
+      // 6. Targeted Particular Device Matching
+      let targetDevice: Device | null = null
+
+      // Check number mentioned in utterance (e.g. "light 1", "fan 2", "relay 3", "channel 4")
+      const numberMatch = said.match(/\b([1-8])\b/)
+      const mentionedNum = numberMatch ? parseInt(numberMatch[1], 10) : null
+
+      // Exact name match first
+      for (const d of devices) {
+        const dNorm = normalizeVoiceText(d.name)
+        if (said.includes(dNorm)) {
+          targetDevice = d
+          break
+        }
+      }
+
+      // Kind + number match (e.g. "light 2", "fan 1", "channel 3", "relay 4")
+      if (!targetDevice && mentionedNum !== null) {
+        if (said.includes('light') || said.includes('led')) {
+          targetDevice =
+            devices.find(
+              (d) =>
+                d.kind === 'light' &&
+                (d.channel === mentionedNum || normalizeVoiceText(d.name).includes(String(mentionedNum)))
+            ) || null
+        } else if (said.includes('fan')) {
+          targetDevice =
+            devices.find(
+              (d) =>
+                d.kind === 'fan' &&
+                (d.channel === mentionedNum || normalizeVoiceText(d.name).includes(String(mentionedNum)))
+            ) || null
+        } else {
+          targetDevice = devices.find((d) => d.channel === mentionedNum) || null
+        }
+      }
+
+      // Fallback to single device of that kind
+      if (!targetDevice) {
+        if (said.includes('fan')) {
+          targetDevice = devices.find((d) => d.kind === 'fan') || null
+        } else if (said.includes('light') || said.includes('led')) {
+          targetDevice = devices.find((d) => d.kind === 'light') || null
+        } else if (said.includes('ac')) {
+          targetDevice = devices.find((d) => d.kind === 'ac') || null
+        }
+      }
+
+      // 7. Execute Target Device Command
+      if (targetDevice) {
+        const targetState = isTurnOff ? false : isTurnOn ? true : !targetDevice.is_on
+        const actionWord = targetState ? 'on' : 'off'
+
+        if (isTurnOn && targetDevice.is_on) {
+          speakReply(`${targetDevice.name} is already on.`)
+          setToastMsg(`Voice: ${targetDevice.name} is already ON`)
+          return
+        }
+        if (isTurnOff && !targetDevice.is_on) {
+          speakReply(`${targetDevice.name} is already off.`)
+          setToastMsg(`Voice: ${targetDevice.name} is already OFF`)
+          return
+        }
+
+        toggle(targetDevice, targetState)
+        speakReply(`Turning ${actionWord} ${targetDevice.name}.`)
+        setToastMsg(`Voice: ${targetDevice.name} turned ${actionWord.toUpperCase()}`)
+        return
+      }
+
+      // Fallback
+      speakReply(`I heard "${rawSaid}", but could not find that device or screen.`)
+      setError(`Heard: "${rawSaid}". Try "Turn on Light 1" or "Open Automate"`)
     }
     rec.start()
   }
@@ -636,6 +842,14 @@ export default function App() {
               </div>
             </div>
             <div className="top-icons">
+              <button
+                className={`icon-pill-btn ${listening ? 'active' : ''}`}
+                title={listening ? 'Listening to voice command…' : 'Start Voice Assistant'}
+                onClick={voice}
+                style={listening ? { color: '#ef4444', borderColor: '#ef4444', background: 'rgba(239, 68, 68, 0.15)' } : {}}
+              >
+                <Mic size={17} />
+              </button>
               <button
                 className={`icon-pill-btn ${liveBg ? 'active' : ''}`}
                 title={liveBg ? '3D Live Wallpaper Active (Click to toggle)' : 'Enable 3D Live Wallpaper'}
@@ -1424,7 +1638,7 @@ export default function App() {
             <div className="room-master-card">
               <div>
                 <h4>Voice Assistant</h4>
-                <p>Speak commands like "Turn on Fan" or "Turn off Lights"</p>
+                <p>Speak commands like "Turn on Light 1", "Turn off Fan", "Open Automate", or "Energy settings"</p>
               </div>
               <button
                 className="master-chip on"
