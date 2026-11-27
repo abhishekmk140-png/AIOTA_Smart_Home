@@ -35,6 +35,12 @@ export function Live3DHomeBackground({ theme = 'dark' }: Live3DHomeBackgroundPro
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = isDark ? 1.15 : 1.05
+    renderer.domElement.style.position = 'absolute'
+    renderer.domElement.style.inset = '0'
+    renderer.domElement.style.width = '100%'
+    renderer.domElement.style.height = '100%'
+    renderer.domElement.style.pointerEvents = 'none'
+    renderer.domElement.style.zIndex = '-1'
     container.appendChild(renderer.domElement)
 
     // 2. Lighting System
@@ -402,9 +408,11 @@ export function Live3DHomeBackground({ theme = 'dark' }: Live3DHomeBackgroundPro
     <div
       ref={mountRef}
       style={{
-        position: 'fixed',
+        position: 'absolute',
         inset: 0,
-        zIndex: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: -1,
         pointerEvents: 'none',
         overflow: 'hidden',
       }}
